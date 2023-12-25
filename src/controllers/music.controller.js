@@ -51,22 +51,16 @@ exports.getAll = async (req, res, next) => {
   }
 };
 
-exports.getContacts = async (req, res, next) => {
+exports.getAllFavorites = async (req, res, next) => {
   try {
-    const {email} = req.params
-    const response = await axios.get(`https://api.systeme.io/api/contacts?email=${email}`, {
-      headers: {
-        'x-api-key': 'qmryzuqh25l5glxyrncs6yktyqjpyk3l90bn8004letbxxm7nuygb05gsqivr1la' // Replace with the actual API key
-      }
-    });
-    
-    return res.status(200).json({ info: "OK", success: true, data: response.data });
+    const favorites = await Project.find({ favorites: req.user._id })
+    return res.status(200).json({ data: favorites, success: true, info: "OK" })
   } catch (error) {
     next(error);
   }
-};
+}
 
-
+ 
 exports.position = async (req, res, next) => {
   try {
     const { id, position } = req.params;

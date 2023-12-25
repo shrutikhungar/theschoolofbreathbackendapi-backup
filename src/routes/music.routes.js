@@ -4,10 +4,7 @@ const { authorize, ADMIN, LOGGED_USER } = require("../utils/auth");
 
 
 let router = Router();
-
-
 router.route("/").get(authorize(), controller.getAll);
-router.route("/contacts").get(controller.getContacts);
 router.route("/favorites").get(authorize(), controller.getAllFavorites);
 router.route("/detail/:slug").get(authorize(), controller.getOne);
 
