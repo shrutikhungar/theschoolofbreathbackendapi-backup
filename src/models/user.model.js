@@ -35,6 +35,10 @@ const User = new Schema({
     suscription: {
         type: Boolean,
         default: false
+    },
+    subscriptionFromSystemeIo:{
+        type:Boolean,
+        default:false
     }
 }, {
     timestamps: true,
@@ -87,9 +91,9 @@ User.statics = {
             if (user && await user.passwordMatches(password)) {
                 return { success: true, user, token: user.token() };
             }
-            err.info = 'Correo o contraseña incorrecta';
+            
         }
-        return err;
+        return {info:'Password or email incorrect'}
     },
 }
 
