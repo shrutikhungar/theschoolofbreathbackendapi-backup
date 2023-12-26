@@ -19,13 +19,13 @@ const app = express()
 app.use(cors());
 
 if (process.env.NODE_ENV == 'production') {
-    app.use(cors('*'))
+   
 
     app.use(morgan('short'))
     app.use(helmet())
 }
 else {
-    app.use(cors('*'))
+  
     app.use(morgan('dev'))
 }
 
