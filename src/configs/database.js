@@ -6,7 +6,7 @@ if(process.env.NODE_ENV == 'development') {
 }
 
 
-mongoose.connect(mongoUri, {
+mongoose.connect('mongodb+srv://angelarrieta34:parzival-13@cluster0.mykndeo.mongodb.net/?retryWrites=true&w=majority', {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
