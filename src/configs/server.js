@@ -15,6 +15,8 @@ const contactRoutes = require('../routes/contact.routes')
 
 
 const app = express()
+// Enable CORS for all routes
+app.use(cors());
 
 if (process.env.NODE_ENV == 'production') {
     app.use(cors('*'))
