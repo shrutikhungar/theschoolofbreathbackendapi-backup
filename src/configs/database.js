@@ -6,7 +6,7 @@ if(process.env.NODE_ENV == 'development') {
 }
 
 
-mongoose.connect(mongoUri, {
+mongoose.connect(`${mongoUri}`, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
    

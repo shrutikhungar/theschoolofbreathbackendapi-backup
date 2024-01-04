@@ -16,16 +16,16 @@ const contactRoutes = require('../routes/contact.routes')
 
 const app = express()
 // Enable CORS for all routes
-app.use(cors());
+app.use(cors({origin:'*'}))
 
 if (process.env.NODE_ENV == 'production') {
    
-
+    app.use(cors({origin:'*'}))
     app.use(morgan('short'))
     app.use(helmet())
 }
 else {
-  
+    app.use(cors({origin:'*'}))
     app.use(morgan('dev'))
 }
 
