@@ -14,13 +14,10 @@ router
     .post(controller.login)
 
 router
-    .route('/update/password')
-    .put(authorize(LOGGED_USER), controller.updatePassword)
+    .route('/changepassword')
+    .post(authorize(LOGGED_USER), controller.changePassword)
 
-router
-    .route('/restore/password/:email?')
-    .get(controller.getRestorePasswordUrl)
-    .put(controller.restorePassword)
+
 
 
 

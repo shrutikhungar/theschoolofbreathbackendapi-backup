@@ -53,13 +53,13 @@ User.post(["findOne", "findById"], async function (result) {
         const createdAt = moment(result.createdAt);
         const now = moment();
         const diff = now.diff(createdAt, 'days');
-
+       
         if (diff > 7) {
-            result.set("promotionDays", false)
+            result.set("promotionDays", diff)
             // La fecha createdAt es mayor a 7 días respecto a la fecha actual
             // Realiza la lógica necesaria aquí
         } else {
-            result.set("promotionDays", true)
+            result.set("promotionDays", diff)
         }
     } catch (error) { }
 });

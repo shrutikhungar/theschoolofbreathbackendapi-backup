@@ -6,6 +6,8 @@ const {
   urlBackend,
 } = require("../configs/vars");
 const User = require("../models/user.model");
+const bcrypt = require('bcryptjs');
+
 
 
 const validateUserData = async (userData) => {
@@ -64,102 +66,45 @@ exports.login = async (req, res, next) => {
   }
 };
 
-exports.updatePassword = async (req, res, next) => {
+exports.changePassword = async (req, res, next) => {
   try {
-    const { password } = req.body;
-    if (!password)
-      return res
-        .status(400)
-        .json({ success: false, info: "Invalid data structure" });
-    let data = await User.findById(req.user._id);
-    if (!data || !data._id)
-      return res.status(400).json({ success: false, info: "User not found" });
-    data.password = hashPassword(password);
-    let Data = await data.save();
-    if (!Data || !Data._id)
-      return res
-        .status(400)
-        .json({ success: false, info: "Internal server error" });
-    return res
-      .status(200)
-      .json({ success: true, info: "Password updated successfully" });
+    const userId = req.user._id; // Assuming the user's ID is stored in req.user
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate Passwords
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, info: "Both current and new passwords are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, info: "User not found" });
+    }
+
+    // Verify Current Password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, info: "Current password is incorrect" });
+    }
+
+    // Hash New Password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update Password in Database
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ success: true, info: "Password updated successfully" });
   } catch (error) {
     next(error);
   }
 };
 
-exports.getRestorePasswordUrl = async (req, res, next) => {
-  try {
-    const { email } = req.params;
-    if (!email || email == "")
-      return res
-        .status(400)
-        .json({ success: false, info: "Invalid data structure" });
-    const user = await User.findOne({ email });
-    if (!user || !user._id)
-      return res.status(400).json({ success: false, info: "User not found" });
-    let token = randomstring.generate({
-      length: 8,
-      charset: "numeric",
-    });
-    user.securityToken = token;
-    let sav = await user.save();
-    if (!sav || !sav._id)
-      return res.status(400).json({ success: false, info: "Internal error" });
-    let restoreUrl = `${clientUrl}/login/?token=${token}`;
 
-    SendEmail.updatePassword(
-      user.email,
-      "Recuperar contraseña Bitcomer",
-      "resetpassword",
-      { url: restoreUrl, user }
-    );
-    return res
-      .status(200)
-      .json({ success: true, info: "Email sended successfully", token: token });
-  } catch (error) {
-    next(error);
-  }
-};
 
-exports.verifyPasswordRestore = async (req, res, next) => {
-  try {
-    const { user, token } = req.params;
-    if (!user || !token || !Types.ObjectId.isValid(user) || token == "")
-      return res
-        .status(400)
-        .json({ success: false, info: "Invalid data structure" });
-    const data = await User.findOne({ _id: user, securityToken: token });
-    if (!data || !data._id)
-      return res.status(400).json({ success: false, info: "Invalid token" });
-    return res.status(200).json({ success: true, info: "Correct info" });
-  } catch (error) {
-    next(error);
-  }
-};
 
-exports.restorePassword = async (req, res, next) => {
-  try {
-    const { token, password } = req.body;
-    if (!password || password == "")
-      return res
-        .status(400)
-        .json({ success: false, info: "Invalid data structure" });
-    const data = await User.findOne({ securityToken: token });
-    if (!data || !data._id)
-      return res.status(400).json({ success: false, info: "User not found" });
-    const hash = hasPassword(password);
-    data.password = hash;
-    data.securityToken = null;
-    let vali = await data.save();
-    if (!vali || !vali._id)
-      return res
-        .status(400)
-        .json({ success: false, info: "Internal server error" });
-    return res
-      .status(200)
-      .json({ success: true, info: "Password updated successfully" });
-  } catch (error) {
-    next(error);
-  }
-};
+
+
+
+
+
