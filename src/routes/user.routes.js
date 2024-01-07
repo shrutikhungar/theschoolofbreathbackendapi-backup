@@ -7,6 +7,10 @@ router
     .route('/me')
     .get(authorize(), controller.getOne)
 
+router
+    .route('/updateSubscriptionStatus')
+    .put(authorize(), controller.updateSubscriptionStatus)
+
 
 router
     .route('/add-favorite/music/:music')

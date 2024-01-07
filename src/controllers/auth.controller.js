@@ -7,6 +7,8 @@ const {
 } = require("../configs/vars");
 const User = require("../models/user.model");
 const bcrypt = require('bcryptjs');
+const crypto = require("crypto");
+const nodemailer = require('nodemailer')
 
 
 
@@ -69,20 +71,17 @@ exports.login = async (req, res, next) => {
 exports.changePassword = async (req, res, next) => {
   try {
     const userId = req.user._id; // Assuming the user's ID is stored in req.user
-    const { currentPassword, newPassword } = req.body;
+    const { newPassword,token } = req.body;
 
     // Validate Passwords
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, info: "Both current and new passwords are required" });
-    }
+   
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, info: "User not found" });
     }
 
-    // Verify Current Password
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
     if (!isMatch) {
       return res.status(401).json({ success: false, info: "Current password is incorrect" });
     }
@@ -99,6 +98,72 @@ exports.changePassword = async (req, res, next) => {
     next(error);
   }
 };
+
+// Function to generate a password reset token
+exports.generateResetToken = async (req, res, next) => {
+  const userEmail = req.body.email;
+  const user = await User.findOne({ email: userEmail });
+
+  if (!user) {
+      return res.status(404).json({ message: "User not found" });
+  }
+
+  // Generate token
+  const resetToken = crypto.randomBytes(20).toString('hex');
+
+  // Set token in the database with an expiration
+  user.resetPasswordToken = resetToken;
+  user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+  await user.save();
+
+ 
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true, // upgrade later with STARTTLS
+    auth: {
+      user: "testapptestapp523@gmail.com",
+      pass: "brtb ljrr myzw kigc",
+    },
+  });
+
+  const resetUrl = `http://localhost:5173/change-password/${resetToken}`;
+  const mailOptions = {
+      from: 'angelarrieta34@gmail.com',
+      to: user.email,
+      subject: 'Password Reset',
+      text: `Please click on the following link, or paste this into your browser to complete the process: ${resetUrl}`
+  };
+
+  transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+          return res.status(500).json({ message: "Error sending email" });
+      }
+      res.status(200).json({ message: 'Email sent' });
+  });
+};
+
+exports.resetPassword = async (req, res, next) => {
+  const { token, newPassword } = req.body;
+
+  const user = await User.findOne({ 
+      resetPasswordToken: token, 
+      resetPasswordExpires: { $gt: Date.now() } 
+  });
+
+  if (!user) {
+      return res.status(400).json({ message: "Password reset token is invalid or has expired." });
+  }
+  // Update the password
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  user.password = hashedPassword; // make sure to hash the password if needed
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  res.status(200).json({ message: "Password has been updated." });
+};
+
 
 
 

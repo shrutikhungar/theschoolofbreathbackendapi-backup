@@ -36,9 +36,17 @@ const User = new Schema({
         type: Boolean,
         default: false
     },
-    subscriptionFromSystemeIo:{
+    isStartSubscription:{
         type:Boolean,
         default:false
+    },
+    resetPasswordToken: {
+        type: String,
+        required: false
+    },
+    resetPasswordExpires: {
+        type: Date,
+        required: false
     }
 }, {
     timestamps: true,

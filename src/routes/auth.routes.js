@@ -12,6 +12,12 @@ router
 router
     .route('/login')
     .post(controller.login)
+router
+    .route('/generateResetToken')
+    .post(controller.generateResetToken)
+router
+    .route('/resetPassword')
+    .post(controller.resetPassword)
 
 router
     .route('/changepassword')
