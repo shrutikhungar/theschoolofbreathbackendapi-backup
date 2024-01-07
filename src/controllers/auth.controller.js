@@ -127,7 +127,7 @@ exports.generateResetToken = async (req, res, next) => {
     },
   });
 
-  const resetUrl = `http://localhost:5173/change-password/${resetToken}`;
+  const resetUrl = `https://appmusic-six.vercel.app/change-password/${resetToken}`;
   const mailOptions = {
       from: 'angelarrieta34@gmail.com',
       to: user.email,
