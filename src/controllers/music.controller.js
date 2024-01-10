@@ -1,8 +1,6 @@
 const Project = require("../models/music.model");
 const fs = require("fs");
 
-
-
 exports.getOne = async (req, res, next) => {
   try {
     const { slug } = req.params;
