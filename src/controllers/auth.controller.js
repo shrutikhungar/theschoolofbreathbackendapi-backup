@@ -127,9 +127,9 @@ exports.generateResetToken = async (req, res, next) => {
     },
   });
 
-  const resetUrl = `https://appmusic-six.vercel.app/change-password/${resetToken}`;
+  const resetUrl = `https://sleepappmusic.vercel.app/change-password/${resetToken}`;
   const mailOptions = {
-      from: 'angelarrieta34@gmail.com',
+      from: 'meditatewithabhi@gmail.com',
       to: user.email,
       subject: 'Password Reset',
       text: `Please click on the following link, or paste this into your browser to complete the process: ${resetUrl}`
