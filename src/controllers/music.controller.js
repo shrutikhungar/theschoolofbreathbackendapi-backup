@@ -31,7 +31,7 @@ exports.getOne = async (req, res, next) => {
 };
 exports.getAll = async (req, res, next) => {
   try {
-    console.log(req.user._id)
+   
     const data = await Project.aggregate([
       {
         $addFields: {
@@ -43,6 +43,16 @@ exports.getAll = async (req, res, next) => {
       { $sort: { isFavorite: -1 } },
       { $project: { sections: false } }
     ]);
+    return res.status(200).json({ info: "OK", success: true, data: data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getAllAdmin = async (req, res, next) => {
+  try {
+   
+    const data =  await Project.find()
     return res.status(200).json({ info: "OK", success: true, data: data });
   } catch (error) {
     next(error);

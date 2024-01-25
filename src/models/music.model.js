@@ -15,18 +15,7 @@ const Music = new Schema(
       type: String,
       default: "",
     },
-    poster: {
-      type: String,
-      default: "",
-    },
-    description: {
-      type: String,
-      default: "",
-    },
-    link: {
-      type: String,
-      required: true,
-    },
+   
     slug: {
       type: String,
       default: function () {
@@ -38,7 +27,9 @@ const Music = new Schema(
       type: Number,
       default: 0,
     },
-    favorites: [{ type: Schema.Types.ObjectId, ref: "User" }]
+    favorites: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    audioFilename: String,
+    imageFilename: String
   },
   {
     timestamps: true,
