@@ -128,7 +128,7 @@ exports.streamAudio =async (req, res) => {
         const file = files[0];
         if (file.contentType.startsWith('audio') || file.contentType.startsWith('image')) {
             const readstream = bucket.openDownloadStream(file._id);
-            res.set('Content-Type', file.contentType);
+            /* res.set('Content-Type', file.contentType); */
             readstream.pipe(res);
         } else {
             res.status(404).send('Unsupported file type');
