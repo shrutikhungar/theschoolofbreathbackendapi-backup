@@ -18,20 +18,16 @@ const categories = require('../routes/categories.routes')
 
 const app = express()
 // Enable CORS for all routes
-app.use(cors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: ['Content-Type', 'Authorization']
-  }));
+app.use(cors({origin:'*'}))
 
 if (process.env.NODE_ENV == 'production') {
    
-  
+    app.use(cors({origin:'*'}))
     app.use(morgan('short'))
     app.use(helmet())
 }
 else {
-   
+    app.use(cors({origin:'*'}))
     app.use(morgan('dev'))
 }
 
