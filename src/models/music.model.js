@@ -15,7 +15,10 @@ const Music = new Schema(
       type: String,
       default: "",
     },
-   
+    description:{
+      type: String,
+      default: "",
+    },
     slug: {
       type: String,
       default: function () {
@@ -29,7 +32,8 @@ const Music = new Schema(
     },
     favorites: [{ type: Schema.Types.ObjectId, ref: "User" }],
     audioFilename: String,
-    imageFilename: String
+    imageFilename: String,
+    categories:[{type:Schema.Types.ObjectId, ref: 'Category' }]
   },
   {
     timestamps: true,

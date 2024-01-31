@@ -10,6 +10,7 @@ const path = require('path');
 
 const mongoose = require('mongoose');
 const Grid = require('gridfs-stream');
+const { log } = require('console');
 
 // Ensure mongoose connection is open
 const conn = mongoose.createConnection(mongoUri);
@@ -51,14 +52,16 @@ const storage = new GridFsStorage({
   exports.uploadFile = async (req, res, next) => {
     try {
      
-        const audioFile = req.files['audioFile'][0];
+  const audioFile = req.files['audioFile'][0];
   const imageFile = req.files['imageFile'][0];
 
   // Create a new music document
   const newMusic = new Music({
     name: req.body.name,
     imageFilename:imageFile.filename,
-    audioFilename: audioFile.filename
+    audioFilename: audioFile.filename,
+    categories:req.body.categoryId,
+    description:req.body.description
   });
 
   newMusic.save((err, music) => {
@@ -73,26 +76,38 @@ const storage = new GridFsStorage({
   exports.deleteMusicFile = async (req, res) => {
     try {
       // Find the music item by id
-      const music = await Music.findById(req.params.id);
+      const music = await Music.findById(req.params.musicId);
       if (!music) {
-        return res.status(404).json({ message: 'Music item not found' });
+          return res.status(404).json({ message: 'Music item not found' });
       }
   
+      // Function to delete file from GridFS
+      const deleteFileFromGridFS = async (gfs, filename) => {
+          const files = await gfs.find({ filename: filename }).toArray();
+          if (files.length > 0) {
+              const fileId = files[0]._id;
+              await gfs.delete(fileId);
+          }
+      };
+  
       // Delete the audio file
-      await gfs.files.deleteOne({ filename: music.audioFilename });
+      if (music.audioFilename) {
+          await deleteFileFromGridFS(gfsAudio, music.audioFilename);
+      }
   
       // Delete the image file, if it exists
       if (music.imageFilename) {
-        await gfs.files.deleteOne({ filename: music.imageFilename });
+          await deleteFileFromGridFS(gfsImages, music.imageFilename);
       }
   
       // Delete the music item from the collection
-      await Music.findByIdAndRemove(req.params.id);
+      await Music.findByIdAndRemove(req.params.musicId);
   
       res.status(200).json({ message: 'Music item and associated files deleted successfully' });
-    } catch (err) {
+  } catch (err) {
+      console.error("Error occurred:", err);
       res.status(500).json({ message: err.message });
-    }
+  }
   }
 
   // Endpoint to stream audio file
@@ -120,4 +135,56 @@ exports.streamAudio =async (req, res) => {
         }
     });
 };
+
+exports.editMusic = async (req, res, next) =>{
+  try {
+    const musicId = req.params.musicId;
+    const currentMusic = await Music.findById(musicId);
+    const updateData = {
+        name: req.body.name,
+        categories: req.body.categoryId,
+        description: req.body.description,
+        // Add other fields as necessary
+    };
+     // Function to delete file from GridFS
+     const deleteFileFromGridFS = async (gfs, filename) => {
+      const files = await gfs.find({ filename: filename }).toArray();
+      if (files.length > 0) {
+          const fileId = files[0]._id;
+          await gfs.delete(fileId);
+      }
+  };
+
+  
+    // Handle file updates (if files are part of the update)
+    if (req.files) {
+        const audioFile = req.files['audioFile'] ? req.files['audioFile'][0] : null;
+        const imageFile = req.files['imageFile'] ? req.files['imageFile'][0] : null;
+
+        if (audioFile) {
+          if (currentMusic && currentMusic.audioFilename) {
+            // Delete the old audio file from GridFS
+            await deleteFileFromGridFS(gfsAudio, currentMusic.audioFilename);
+        }
+    
+        // Update with the new audio file's filename
+        updateData.audioFilename = audioFile.filename;
+        }
+
+        if (imageFile) {
+          if (currentMusic && currentMusic.imageFilename) {
+            // Delete the old audio file from GridFS
+           await deleteFileFromGridFS(gfsAudio, currentMusic.imageFilename);
+        }
+            updateData.imageFilename = imageFile.filename;
+            // Delete the old image file from GridFS
+        }
+    }
+
+    const updatedMusic = await Music.findByIdAndUpdate(musicId, updateData, { new: true });
+    res.status(200).json({ message: 'Music updated successfully', music: updatedMusic });
+} catch (error) {
+    next(error)
+}
+}
   
