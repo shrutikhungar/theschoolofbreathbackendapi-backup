@@ -11,6 +11,8 @@ const authRoutes = require('../routes/auth.routes')
 const projectRoutes = require('../routes/music.routes')
 const purchaseRoutes = require('../routes/purchase.routes')
 const contactRoutes = require('../routes/contact.routes')
+const uploadRoutes = require('../routes/upload.routes')
+const categories = require('../routes/categories.routes')
 
 
 
@@ -40,6 +42,8 @@ app.use('/auth', authRoutes)
 app.use('/musics', projectRoutes)
 app.use('/purchases', purchaseRoutes)
 app.use('/contact', contactRoutes)
+app.use('/categories',categories )
+app.use('/uploadFiles',uploadRoutes )
 
 
 module.exports = app

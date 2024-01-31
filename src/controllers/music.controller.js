@@ -5,33 +5,17 @@ exports.getOne = async (req, res, next) => {
   try {
     const { slug } = req.params;
     const projects = await Project.find();
-    const data = await Project.findOne({ slug: slug });
-    for (const key in projects) {
-      if (Object.hasOwnProperty.call(projects, key)) {
-        if (projects[key]._id.toString() == data._id.toString()) {
-          let index = key;
-          let before =
-            index > 0
-              ? projects[index - 1].slug
-              : projects[projects.length - 1].slug;
-          index++;
-          let after = projects[index] ? projects[index].slug : projects[0].slug;
-          data.set("beforeAndAfter", {
-            before: before,
-            after: after,
-          });
-        }
-      }
-    }
+    const data = await Project.findById(slug);
+    
 
-    return res.status(200).json({ success: true, info: "OK", data: data });
+    return res.status(200).json(data);
   } catch (error) {
     next(error);
   }
 };
 exports.getAll = async (req, res, next) => {
   try {
-    console.log(req.user._id)
+   
     const data = await Project.aggregate([
       {
         $addFields: {
@@ -49,14 +33,58 @@ exports.getAll = async (req, res, next) => {
   }
 };
 
+exports.getAllAdmin = async (req, res, next) => {
+  try {
+   
+    const data =  await Project.find()
+    return res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getAllFavorites = async (req, res, next) => {
   try {
     const favorites = await Project.find({ favorites: req.user._id })
     return res.status(200).json({ data: favorites, success: true, info: "OK" })
   } catch (error) {
-    next(error);
+    return res.status(200).json({ data: favorites, success: true, info: "OK" })
   }
 }
+
+exports.getMusicsByCategory = async (req, res, next) => {
+  try {
+    const { category } = req.query;
+    let query = {};
+
+    if (category) {
+        // Assuming 'category' is the ObjectId of the category
+        query.categories = { $in: [category] };
+    }
+
+    const musicList = await Project.find(query).populate('categories');
+    return res.status(200).json(musicList)
+  } catch (error) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+exports.getAllFavoritesByCategory = async (req, res, next) => {
+  try {
+    const { category } = req.query; // Get the category from query parameters
+    let query = { favorites: req.user._id };
+
+    if (category) {
+        // Assuming 'category' is the ObjectId or name of the category
+        query.categories = { $in: [category] };
+    }
+
+    const favoriteProjects = await Project.find(query).populate('categories');
+    return res.status(200).json(favoriteProjects);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
  
 exports.position = async (req, res, next) => {
