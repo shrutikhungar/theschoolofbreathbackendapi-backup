@@ -32,8 +32,8 @@ else {
 }
 
 app.use(passport.initialize())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({limit:'30mb'}))
+app.use(express.urlencoded({ extended: true ,limit:'30mb'}))
 
 passport.use('jwt', jwt)
 
