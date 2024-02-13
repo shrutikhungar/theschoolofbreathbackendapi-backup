@@ -1,5 +1,5 @@
 module.exports = {
-    port: process.env.PORT || 4001,
+    port: process.env.PORT || 8085,
     allowedOrigins: ["*"],
     mongoUri: process.env.NODE_ENV == 'production' ? process.env.MONGO_URI : process.env.MONGO_URI,
     jwtSecret: process.env.JWT_SECRET || '5up3r53cr3tk3y',

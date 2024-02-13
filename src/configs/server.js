@@ -12,6 +12,7 @@ const projectRoutes = require('../routes/music.routes')
 const purchaseRoutes = require('../routes/purchase.routes')
 const contactRoutes = require('../routes/contact.routes')
 const uploadRoutes = require('../routes/upload.routes')
+const videosRoutes = require('../routes/video.routes')
 const categories = require('../routes/categories.routes')
 
 
@@ -32,8 +33,8 @@ else {
 }
 
 app.use(passport.initialize())
-app.use(express.json({limit:'30mb'}))
-app.use(express.urlencoded({ extended: true ,limit:'30mb'}))
+app.use(express.json())
+app.use(express.urlencoded({ extended: true}))
 
 passport.use('jwt', jwt)
 
@@ -43,6 +44,7 @@ app.use('/musics', projectRoutes)
 app.use('/purchases', purchaseRoutes)
 app.use('/contact', contactRoutes)
 app.use('/categories',categories )
+app.use('/videos',videosRoutes )
 app.use('/uploadFiles',uploadRoutes )
 
 

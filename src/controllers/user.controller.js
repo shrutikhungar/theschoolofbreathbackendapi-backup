@@ -2,6 +2,7 @@ const { Types } = require("mongoose");
 const { contactTarget, img, jwtSecret, socketUrl } = require("../configs/vars");
 const User = require("../models/user.model");
 const Music = require("../models/music.model");
+const Video = require("../models/videos.model");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const hashPassword = require("../utils/hasPassword");
@@ -28,6 +29,32 @@ exports.addFavoriteMusic = async (req, res, next) => {
     }
 
     return res.status(200).json({ success: true, music });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.addFavoriteVideo = async (req, res, next) => {
+  try {
+    const videoId = req.params.video;
+    const userId = req.user._id;
+
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+      return res.status(400).json({ success: false, info: "Video not found" });
+    }
+
+    if (video.favorites.includes(userId)) {
+      // El usuario ya ha marcado como favorito, así que lo eliminamos
+      await Video.findByIdAndUpdate(videoId, { $pull: { favorites: userId } }, { new: true });
+    } else {
+      // El usuario no ha marcado como favorito, así que lo agregamos
+      await Video.findByIdAndUpdate(videoId, { $push: { favorites: userId } }, { new: true });
+    }
+
+    return res.status(200).json({ success: true, video });
 
   } catch (error) {
     next(error);

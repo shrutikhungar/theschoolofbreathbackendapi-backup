@@ -16,4 +16,8 @@ router
     .route('/add-favorite/music/:music')
     .put(authorize(), controller.addFavoriteMusic)
 
+ router
+    .route('/add-favorite/video/:video')
+    .put(authorize(), controller.addFavoriteVideo)    
+
 module.exports = router
