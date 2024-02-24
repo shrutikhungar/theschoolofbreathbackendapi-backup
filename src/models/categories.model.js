@@ -14,6 +14,11 @@ const Category = new Schema(
         return text;
       },
     },
+    type: {
+      type: String,
+      enum: ['video', 'music'],
+      required: true // Optional, depending on whether you want this field to be mandatory
+    },
    
   },
  

@@ -2,7 +2,7 @@ const Category = require('../models/categories.model')
 
 exports.addCategories = async (req, res, next) =>{
     try {
-        const { name } = req.body;
+        const { name,type } = req.body;
 
         // Check if the category already exists
         const existingCategory = await Category.findOne({ name });
@@ -11,7 +11,7 @@ exports.addCategories = async (req, res, next) =>{
         }
 
         // Create a new category
-        const category = new Category({ name });
+        const category = new Category({ name,type });
         await category.save();
 
         res.status(201).send({ message: 'Category created successfully', category });
@@ -22,7 +22,7 @@ exports.addCategories = async (req, res, next) =>{
 exports.editCategories = async (req, res, next) =>{
     try {
         const categoryId = req.params.id;
-        const { newName } = req.body;
+        const { newName,type } = req.body;
 
         const category = await Category.findById(categoryId);
         if (!category) {
@@ -30,6 +30,7 @@ exports.editCategories = async (req, res, next) =>{
         }
 
         category.name = newName;
+        category.type = type
         await category.save();
 
         res.send({ message: 'Category updated successfully', category });
@@ -56,6 +57,20 @@ exports.deleteCategories = async (req, res, next) =>{
 exports.getCategories = async (req, res, next) =>{
     try {
         const categories = await Category.find({});
+        res.send(categories);
+    } catch (error) {
+        next(error)
+    }
+}
+
+exports.getCategoryByType = async (req, res, next) =>{
+    try {
+        const { type } = req.params;
+
+        const categories = await Category.findOne({ type });
+        if (!categories) {
+            return res.status(404).send('Categories not found.');
+        }
         res.send(categories);
     } catch (error) {
         next(error)

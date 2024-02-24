@@ -9,7 +9,7 @@ router.route("/").get( controller.getAllAdmin);
 router.route("/favorites").get(authorize(), controller.getAllFavorites);
 router.route("/favorites/category").get(authorize(), controller.getAllFavoritesByCategory);
 router.route("/detail/:slug").get( controller.getOne);
-router.route("/category").get(controller.getMusicsByCategory);
+router.route("/category").get(authorize(),controller.getMusicsByCategory);
 
 
 module.exports = router;

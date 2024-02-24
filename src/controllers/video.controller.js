@@ -25,7 +25,7 @@ const uploadFileToStorage = async (file, isPoster = false) => {
   await new Promise((resolve, reject) => {
       blobStream.on('error', reject);
       blobStream.on('finish', resolve);
-      blobStream.end(file.buffer);
+      blobStream.end(file.buffer)
   });
 
   return `https://storage.googleapis.com/${bucketName}/${blob.name}`;
@@ -41,34 +41,7 @@ async function deleteFileFromStorage(fileName, isPoster = false) {
 exports.uploadFiles = async (req, res, next) => {
     try {
         // Ensure both sound and poster files are uploaded
-        if (!req.files.videoFile || !req.files.imageFile) {
-            return res.status(400).send({message:'Both video and poster files are required.'});
-        }
-
-        const audioFile = req.files.videoFile[0]; // Assuming `audioFile` is the field name for the sound file
-        const imageFile = req.files.imageFile[0]; // Assuming `imageFile` is the field name for the poster file
-
-        // Function to upload file to Google Cloud Storage and return the URL
-        const uploadFileToStorage = async (file, isPoster = false) => {
-          // Determine the file path based on whether it's a poster
-          const filePath = isPoster ? `posters/${file.originalname}` : `videos/${file.originalname}`;
       
-          const blob = storage.bucket(bucketName).file(filePath);
-          const blobStream = blob.createWriteStream();
-      
-          await new Promise((resolve, reject) => {
-              blobStream.on('error', reject);
-              blobStream.on('finish', resolve);
-              blobStream.end(file.buffer);
-          });
-      
-          return `https://storage.googleapis.com/${bucketName}/${blob.name}`;
-      };
-      
-
-        // Upload files
-        const audioFileUrl = await uploadFileToStorage(audioFile);
-        const imageFileUrl = await uploadFileToStorage(imageFile,true);
 
         // Save music details in MongoDB
         const music = new Music({
@@ -76,19 +49,15 @@ exports.uploadFiles = async (req, res, next) => {
             name: req.body.name,
             categories:req.body.categoryId,
             description:req.body.description,
-            videoFilename: audioFileUrl,
-            imageFilename: imageFileUrl,
+            videoFilename: req.body.audioFileUrl,
+            imageFilename: req.body.imageFileUrl,
         });
 
         await music.save();
 
         res.status(200).send({
             message: 'Music uploaded and saved successfully.',
-            data: {
-                videoUrl: audioFileUrl,
-                posterUrl: imageFileUrl,
-                // Include any other details you saved
-            }
+           
         });
     } catch (error) {
         return res.status(500).send({ message: error.message });
@@ -103,30 +72,15 @@ exports.editMusicItem = async (req, res) => {
         name: req.body.name,
         categories: req.body.categoryId,
         description: req.body.description,
+        videoFilename: req.body.audioFileUrl,
+        imageFilename: req.body.imageFileUrl,
         // Add other fields as necessary
     };
       if (!musicItem) {
           return res.status(404).send({message: 'Music item not found.'});
       }
 
-      // Check for new file uploads and delete old files if new ones are provided
-      if (req.files && req.files.videoFile) {
-          if (musicItem.videoFilename) {
-              const oldaudioFileName = musicItem.videoFilename.split('/').pop();
-              await deleteFileFromStorage(oldaudioFileName);
-          }
-          const newaudioFile = req.files.audioFile[0];
-          updateData.videoFilename = await uploadFileToStorage(newaudioFile); // Update with new sound URL
-      }
-
-      if (req.files && req.files.imageFile) {
-          if (musicItem.imageFilename) {
-              const oldimageFileName = musicItem.imageFilename.split('/').pop();
-              await deleteFileFromStorage(oldimageFileName,true);
-          }
-          const newimageFile = req.files.imageFile[0];
-          updateData.imageFilename = await uploadFileToStorage(newimageFile, true); // Update with new poster URL
-      }
+    
 
       // Save the updated music item in the database
       const updatedMusic = await Music.findByIdAndUpdate(musicId, updateData, { new: true });
@@ -151,17 +105,17 @@ exports.deleteMusicItem = async (req, res) =>{
             return res.status(404).send({ message: 'Music item not found.' });
         }
 
-           // Delete sound file if it exists
-          if (musicItem.videoFilename) {
-            const audioFileName = musicItem.videoFilename.split('/').pop();
-            await deleteFileFromStorage(audioFileName); // Assuming this is not in the `images` folder
-        }
-
-        // Delete poster file if it exists
-        if (musicItem.imageFilename) {
-            const imageFileName = musicItem.imageFilename.split('/').pop();
-            await deleteFileFromStorage(imageFileName, true); // Assuming this is in the `images` folder
-        }  
+            // Delete sound file if it exists
+            if (musicItem.videoFilename) {
+              const audioFileName = musicItem.videoFilename.split('/').pop();
+              await deleteFileFromStorage(audioFileName); // Assuming this is not in the `images` folder
+          }
+  
+          // Delete poster file if it exists
+          if (musicItem.imageFilename) {
+              const imageFileName = musicItem.imageFilename.split('/').pop();
+              await deleteFileFromStorage(imageFileName, true); // Assuming this is in the `images` folder
+          }  
         // Delete the music item from the database
         await Music.deleteOne({ _id: musicId });
 
