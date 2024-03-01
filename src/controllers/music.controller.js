@@ -125,8 +125,8 @@ exports.getMusicsByCategory = async (req, res, next) => {
         musicList = await Project.find(query).populate('categories');
       } else {
         // If contact does not have tag, show only 3 non-premium music
-        query.isPremium = false; // Only fetch non-premium music
-        musicList = await Project.find(query).populate('categories').limit(3);
+        //query.isPremium = false; // Only fetch non-premium music
+        musicList = await Project.find(query).populate('categories')
         isPremium = false; // Set isPremium to false as we are fetching non-premium music
       }
     }
