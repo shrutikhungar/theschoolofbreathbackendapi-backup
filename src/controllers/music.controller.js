@@ -1,6 +1,8 @@
 const Project = require("../models/music.model");
 const fs = require("fs");
 const axios = require("axios");
+
+const ENROLLED_TAG = process.env.ENROLLED_TAG
 exports.getOne = async (req, res, next) => {
   try {
     const { slug } = req.params;
@@ -89,44 +91,98 @@ const filterByName = (array,name) =>{
 exports.getMusicsByCategory = async (req, res, next) => {
   try {
     const { category } = req.query;
- /*    const userEmail = req.user.email;
-      const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
-        headers: {
-          'x-api-key': process.env.API_SYSTEME_KEY // Replace with the actual API key
-        }
-      });
- 
-        const contacts = response.data?.items[0] ?? null;
-        const contactWithTag = contacts ? filterByName(contacts.tags,'Enrolled_to_Membership') : null */
-      
-    let query = {};
+    const userEmail = req.user.email;
+    const userPromotionDays = req.user.promotionDays; // Assuming this is where promotion days are stored
+   
+    const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
+      headers: {
+        'x-api-key': process.env.API_SYSTEME_KEY // Replace with the actual API key
+      }
+    });
 
-   if (category) {
-        // Assuming 'category' is the ObjectId of the category
-        query.categories = { $in: [category] };
+    const contacts = response.data?.items[0] ?? null;
+    const contactWithTag = contacts ? filterByName(contacts.tags, ENROLLED_TAG) : null;
+
+    let query = {};
+    let isPremium = true; // Default to true, change based on conditions below
+
+    if (category) {
+      // Assuming 'category' is the ObjectId of the category
+      query.categories = { $in: [category] };
     }
 
-    const musicList = await Project.find(query).populate('categories');
+    // Initialize musicList array
+    let musicList = [];
 
-    return res.status(200).json({musicList,isPremium:true}) 
-    
+    // Check user's promotion days and contactWithTag status
+    if (userPromotionDays < 7) {
+      // If promotion days are less than 7, show all music
+      musicList = await Project.find(query).populate('categories');
+    } else {
+      // If promotion days are more than 7
+      if (contactWithTag) {
+        // If contact has tag, show all music
+        musicList = await Project.find(query).populate('categories');
+      } else {
+        // If contact does not have tag, show only 3 non-premium music
+        query.isPremium = false; // Only fetch non-premium music
+        musicList = await Project.find(query).populate('categories').limit(3);
+        isPremium = false; // Set isPremium to false as we are fetching non-premium music
+      }
+    }
+
+    return res.status(200).json({ musicList, isPremium });
+
   } catch (error) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: error.message });
   }
 }
 
 exports.getAllFavoritesByCategory = async (req, res, next) => {
   try {
     const { category } = req.query; // Get the category from query parameters
-    let query = { favorites: req.user._id, };
+    const userEmail = req.user.email;
+    const userId = req.user._id
+    const userPromotionDays = req.user.promotionDays; // Assuming this is where promotion days are stored
+   
+    const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
+      headers: {
+        'x-api-key': process.env.API_SYSTEME_KEY // Replace with the actual API key
+      }
+    });
 
+    const contacts = response.data?.items[0] ?? null;
+    const contactWithTag = contacts ? filterByName(contacts.tags, 'Enrolled_to_Membership') : null;
+
+
+    let query = { favorites: userId, };
+    let isPremium = true; // Default to true, change based on conditions below
     if (category) {
         // Assuming 'category' is the ObjectId or name of the category
         query.categories = { $in: [category] };
     }
 
-    const favoriteProjects = await Project.find(query).populate('categories');
-    return res.status(200).json(favoriteProjects);
+    // Initialize musicList array
+    let musicList = [];
+
+    // Check user's promotion days and contactWithTag status
+    if (userPromotionDays < 7) {
+      // If promotion days are less than 7, show all music
+      musicList = await Project.find(query).populate('categories');
+    } else {
+      // If promotion days are more than 7
+      if (contactWithTag) {
+        // If contact has tag, show all music
+        musicList = await Project.find(query).populate('categories');
+      } else {
+        // If contact does not have tag, show only 3 non-premium music
+        query.isPremium = false; // Only fetch non-premium music
+        musicList = await Project.find(query).populate('categories').limit(3);
+        isPremium = false; // Set isPremium to false as we are fetching non-premium music
+      }
+    }
+
+    return res.status(200).json({ musicList, isPremium });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

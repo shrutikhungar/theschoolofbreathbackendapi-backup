@@ -77,6 +77,7 @@ exports.uploadFiles = async (req, res, next) => {
             description:req.body.description,
             audioFilename: audioFileUrl,
             imageFilename: imageFileUrl,
+            isPremium:req.body.isPremium
         });
 
         await music.save();
@@ -102,6 +103,7 @@ exports.editMusicItem = async (req, res) => {
         name: req.body.name,
         categories: req.body.categoryId,
         description: req.body.description,
+        isPremium:req.body.isPremium
         // Add other fields as necessary
     };
       if (!musicItem) {

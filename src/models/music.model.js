@@ -33,7 +33,8 @@ const Music = new Schema(
     favorites: [{ type: Schema.Types.ObjectId, ref: "User" }],
     audioFilename: String,
     imageFilename: String,
-    categories:[{type:Schema.Types.ObjectId, ref: 'Category' }]
+    categories:[{type:Schema.Types.ObjectId, ref: 'Category' }],
+    isPremium:Boolean,
   },
   {
     timestamps: true,
