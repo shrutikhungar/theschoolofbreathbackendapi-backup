@@ -101,7 +101,7 @@ exports.getMusicsByCategory = async (req, res, next) => {
     });
 
     const contacts = response.data?.items[0] ?? null;
-    const contactWithTag = contacts ? filterByName(contacts.tags, ENROLLED_TAG) : null;
+    const contactWithTag = contacts ? filterByName(contacts.tags, 'Enrolled_to_Membership') : null;
 
     let query = {};
     let isPremium = true; // Default to true, change based on conditions below
