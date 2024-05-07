@@ -127,7 +127,7 @@ exports.generateResetToken = async (req, res, next) => {
     },
   });
 
-  const resetUrl = `https://www.meditatewithabhi.com/app/change-password/${resetToken}`;
+  const resetUrl = `https://sleepappmusic.vercel.app/change-password/${resetToken}`;
   const mailOptions = {
       from: 'meditatewithabhi@gmail.com',
       to: user.email,
