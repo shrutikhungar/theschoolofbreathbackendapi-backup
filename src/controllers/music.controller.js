@@ -93,7 +93,6 @@ exports.getMusicsByCategory = async (req, res, next) => {
     const { category } = req.query;
     const userEmail = req.user.email;
     const userPromotionDays = req.user.promotionDays; // Assuming this is where promotion days are stored
-    console.log(userPromotionDays);
     const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
       headers: {
         'x-api-key': process.env.API_SYSTEME_KEY // Replace with the actual API key
