@@ -114,7 +114,7 @@ exports.getMusicsByCategory = async (req, res, next) => {
     let musicList = [];
 
     // Check user's promotion days and contactWithTag status
-    if (userPromotionDays < 15) {
+    if (userPromotionDays < 7) {
       // If promotion days are less than 7, show all music
       musicList = await Project.find(query).populate('categories');
     } else {
