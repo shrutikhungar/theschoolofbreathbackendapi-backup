@@ -4,6 +4,7 @@ const { Storage } = require('@google-cloud/storage');
 const mongoose = require('mongoose');
 const Music = require("../models/music.model");
 const fs = require('fs');
+const { log } = require('console');
 // Decode the environment variable to a temporary file
 
 // Initialize Google Cloud Storage
@@ -103,9 +104,9 @@ exports.editMusicItem = async (req, res) => {
         name: req.body.name,
         categories: req.body.categoryId,
         description: req.body.description,
-        isPremium:req.body.isPremium
+        isPremium:req.body.isPremium === 'true'
         // Add other fields as necessary
-    };
+    }
       if (!musicItem) {
           return res.status(404).send({message: 'Music item not found.'});
       }
