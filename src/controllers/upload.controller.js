@@ -105,7 +105,7 @@ exports.editMusicItem = async (req, res) => {
         categories: req.body.categoryId,
         description: req.body.description,
         isPremium:req.body.isPremium === 'true'
-        // Add other fields as necessary
+       
     }
       if (!musicItem) {
           return res.status(404).send({message: 'Music item not found.'});

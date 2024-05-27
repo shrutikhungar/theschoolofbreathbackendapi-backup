@@ -122,8 +122,8 @@ exports.generateResetToken = async (req, res, next) => {
     port: 465,
     secure: true, // upgrade later with STARTTLS
     auth: {
-      user: "testapptestapp523@gmail.com",
-      pass: "brtb ljrr myzw kigc",
+      user: "abhishekdug@gmail.com",
+      pass: "hfsn ajyg uwon cona",
     },
   });
 
