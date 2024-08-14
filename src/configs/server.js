@@ -14,6 +14,7 @@ const contactRoutes = require('../routes/contact.routes')
 const uploadRoutes = require('../routes/upload.routes')
 const videosRoutes = require('../routes/video.routes')
 const categories = require('../routes/categories.routes')
+const appMusics = require('../routes/music.app.routes')
 
 
 
@@ -46,6 +47,6 @@ app.use('/contact', contactRoutes)
 app.use('/categories',categories )
 app.use('/videos',videosRoutes )
 app.use('/uploadFiles',uploadRoutes )
-
+app.use('/app/musics',appMusics)
 
 module.exports = app
