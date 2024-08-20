@@ -24,7 +24,6 @@ exports.getMusicsByCategory = async (req, res, next) => {
   try {
     const { category } = req.query;
     const userEmail = req.user.email;
-    const userPromotionDays = req.user.promotionDays;
 
     const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
       headers: {
@@ -45,12 +44,7 @@ exports.getMusicsByCategory = async (req, res, next) => {
     // Initialize musicList array
     let musicList = [];
 
-    // Check user's promotion days and contactWithTag status
-    if (userPromotionDays < 7) {
-      // If promotion days are less than 7, show all music
-      musicList = await Project.find(query).populate('categories');
-    } else {
-      const hasFullAccess = hasAnyTag(userTags, fullAccessTags);
+    const hasFullAccess = hasAnyTag(userTags, fullAccessTags);
       const hasLimitedAccess = hasAnyTag(userTags, limitedAccessTags);
 
       if (hasFullAccess) {
@@ -67,7 +61,6 @@ exports.getMusicsByCategory = async (req, res, next) => {
         musicList = await Project.find(query).populate('categories');
         isPremium = false; // Set isPremium to false as we are fetching non-premium music
       }
-    }
 
     return res.status(200).json({ musicList, isPremium });
 
@@ -101,11 +94,7 @@ exports.getAllFavoritesByCategory = async (req, res, next) => {
 
     let musicList = [];
 
-    if (userPromotionDays < 7) {
-      // If promotion days are less than 7, show all favorite music
-      musicList = await Project.find(query).populate('categories');
-    } else {
-      const hasFullAccess = hasAnyTag(userTags, fullAccessTags);
+    const hasFullAccess = hasAnyTag(userTags, fullAccessTags);
       const hasLimitedAccess = hasAnyTag(userTags, limitedAccessTags);
 
       if (hasFullAccess) {
@@ -122,7 +111,6 @@ exports.getAllFavoritesByCategory = async (req, res, next) => {
         musicList = await Project.find(query).populate('categories');
         isPremium = false; // Set isPremium to false as we are fetching non-premium music
       }
-    }
 
     return res.status(200).json({ musicList, isPremium });
   } catch (error) {
