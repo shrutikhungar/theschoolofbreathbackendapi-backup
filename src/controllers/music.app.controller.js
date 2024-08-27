@@ -19,6 +19,23 @@ const limitedAccessTags = [
 const hasAnyTag = (userTags, tagsToCheck) => {
   return tagsToCheck.some(tag => userTags.includes(tag));
 };
+exports.getPreviewMusicsByCategory = async (req, res, next) => {
+  try {
+    const { category } = req.query;
+    let query = {};
+
+    if (category) {
+      query.categories = { $in: [category] };
+    }
+
+    // Fetch all tracks
+    const musicList = await Project.find(query).populate('categories');
+
+    return res.status(200).json({ musicList, isPremium: false });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 exports.getMusicsByCategory = async (req, res, next) => {
   try {
