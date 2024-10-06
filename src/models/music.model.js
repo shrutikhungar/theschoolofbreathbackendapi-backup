@@ -35,6 +35,7 @@ const Music = new Schema(
     imageFilename: String,
     categories:[{type:Schema.Types.ObjectId, ref: 'Category' }],
     isPremium:Boolean,
+    typeContent:String
   },
   {
     timestamps: true,

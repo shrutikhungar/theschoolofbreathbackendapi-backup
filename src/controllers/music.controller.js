@@ -1,7 +1,7 @@
 const Project = require("../models/music.model");
 const fs = require("fs");
 const axios = require("axios");
-
+const Music = require("../models/music.model");
 const ENROLLED_TAG = process.env.ENROLLED_TAG
 exports.getOne = async (req, res, next) => {
   try {
@@ -18,7 +18,8 @@ exports.getOne = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-   
+
+
 
     // Save music details in MongoDB
     const music = new Music({
@@ -26,24 +27,53 @@ exports.create = async (req, res, next) => {
         name: req.body.name,
         categories:req.body.categoryId,
         description:req.body.description,
-        videoFilename: req.body.description,
-        imageFilename: req.body.imageFilename,
+        audioFilename: req.body.audioFilename,
+        imageFilename:req.body.imageFilename,
+        isPremium:req.body.isPremium,
+        typeContent:req.body.typeContent
     });
 
     await music.save();
 
     res.status(200).send({
         message: 'Music uploaded and saved successfully.',
-        data: {
-            videoUrl: audioFileUrl,
-            posterUrl: imageFileUrl,
-            // Include any other details you saved
-        }
+      
     });
 } catch (error) {
     return res.status(500).send({ message: error.message });
 }
 }
+exports.editMusicItem = async (req, res) => {
+  try {
+      const { musicId } = req.params; // Music item's ID from URL parameter
+      const musicItem = await Music.findById(musicId);
+      const updateData = {
+        name: req.body.name,
+        categories: req.body.categoryId,
+        description: req.body.description,
+        isPremium:req.body.isPremium === 'true',
+        typeContent:req.body.typeContent,
+        audioFilename: req.body.audioFilename,
+        imageFilename:req.body.imageFilename
+       
+    }
+      if (!musicItem) {
+          return res.status(404).send({message: 'Music item not found.'});
+      }
+
+
+
+      // Save the updated music item in the database
+      const updatedMusic = await Music.findByIdAndUpdate(musicId, updateData, { new: true });
+
+      res.status(200).send({
+          message: 'Music item updated successfully.',
+          data: updatedMusic,
+      });
+  } catch (error) {
+      res.status(500).send({ message: error.message });
+  }
+};
 exports.getAll = async (req, res, next) => {
   try {
    
@@ -102,7 +132,12 @@ exports.getMusicsByCategory = async (req, res, next) => {
     const contacts = response.data?.items[0] ?? null;
     const contactWithTag = contacts ? filterByName(contacts.tags, 'Enrolled_to_Membership') : null;
 
-    let query = {};
+    let query = {
+      $or: [
+        { typeContent: { $exists: false } },
+        { typeContent: { $ne: 'app' } }
+      ]
+    };
     let isPremium = true; // Default to true, change based on conditions below
 
     if (category) {
@@ -154,7 +189,14 @@ exports.getAllFavoritesByCategory = async (req, res, next) => {
     const contactWithTag = contacts ? filterByName(contacts.tags, 'Enrolled_to_Membership') : null;
 
 
-    let query = { favorites: userId, };
+   
+    let query = {
+      favorites: userId,
+      $or: [
+        { typeContent: { $exists: false } },
+        { typeContent: { $ne: 'app' } }
+      ]
+    };
     let isPremium = true; // Default to true, change based on conditions below
     if (category) {
         // Assuming 'category' is the ObjectId or name of the category

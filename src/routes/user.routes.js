@@ -6,6 +6,9 @@ let router = Router()
 router
     .route('/me')
     .get(authorize(), controller.getOne)
+router
+    .route('/users/:email')
+    .get(controller.getUserByEmail)
 
 router
     .route('/updateSubscriptionStatus')

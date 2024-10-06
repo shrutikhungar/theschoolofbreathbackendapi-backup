@@ -60,7 +60,29 @@ exports.addFavoriteVideo = async (req, res, next) => {
     next(error);
   }
 };
+exports.getUserByEmail = async (req, res, next) => {
+  try {
+    const { email } = req.params; // Assuming the email is passed as a route parameter
 
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    // Find user by email, excluding sensitive information
+    const user = await User.findOne({ email }, { password: 0, __v: 0, role: 0 });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 exports.getOne = async (req, res, next) => {
   try {

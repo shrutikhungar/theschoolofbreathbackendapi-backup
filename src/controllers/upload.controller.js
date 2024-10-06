@@ -153,17 +153,6 @@ exports.deleteMusicItem = async (req, res) =>{
             return res.status(404).send({ message: 'Music item not found.' });
         }
 
-        // Delete sound file if it exists
-       /*  if (musicItem.audioFilename) {
-            const audioFileName = musicItem.audioFilename.split('/').pop();
-            await deleteFileFromStorage(audioFileName); // Assuming this is not in the `images` folder
-        } */
-
-        // Delete poster file if it exists
-       /*  if (musicItem.imageFilename) {
-            const imageFileName = musicItem.imageFilename.split('/').pop();
-            await deleteFileFromStorage(imageFileName, true); // Assuming this is in the `images` folder
-        } */
 
         // Delete the music item from the database
         await Music.deleteOne({ _id: musicId });

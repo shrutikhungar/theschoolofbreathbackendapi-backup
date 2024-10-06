@@ -1,4 +1,4 @@
-const Project = require("../models/music.model");
+const Music = require("../models/music.model");
 const axios = require("axios");
 
 const fullAccessTags = [
@@ -19,17 +19,17 @@ const limitedAccessTags = [
 const hasAnyTag = (userTags, tagsToCheck) => {
   return tagsToCheck.some(tag => userTags.includes(tag));
 };
+
 exports.getPreviewMusicsByCategory = async (req, res, next) => {
   try {
     const { category } = req.query;
-    let query = {};
+    let query = { typeContent: 'app' };  // Add this line
 
     if (category) {
       query.categories = { $in: [category] };
     }
 
-    // Fetch all tracks
-    const musicList = await Project.find(query).populate('categories');
+    const musicList = await Music.find(query).populate('categories');
 
     return res.status(200).json({ musicList, isPremium: false });
   } catch (error) {
@@ -51,7 +51,7 @@ exports.getMusicsByCategory = async (req, res, next) => {
     const contacts = response.data?.items[0] ?? null;
     const userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
 
-    let query = {};
+    let query = { typeContent: 'app' };  // Add this line
     let isPremium = true; // Default to true, change based on conditions below
 
     if (category) {
@@ -66,16 +66,16 @@ exports.getMusicsByCategory = async (req, res, next) => {
 
       if (hasFullAccess) {
         // Full access, show all music
-        musicList = await Project.find(query).populate('categories');
+        musicList = await Music.find(query).populate('categories');
       } else if (hasLimitedAccess) {
         // Limited access, show only non-premium and specific premium content
         
-        musicList = await Project.find(query).populate('categories');
+        musicList = await Music.find(query).populate('categories');
         isPremium = false; // Set isPremium to false as we are fetching non-premium music
       } else {
         // No specific access, show only non-premium music
        
-        musicList = await Project.find(query).populate('categories');
+        musicList = await Music.find(query).populate('categories');
         isPremium = false; // Set isPremium to false as we are fetching non-premium music
       }
 
@@ -102,7 +102,7 @@ exports.getAllFavoritesByCategory = async (req, res, next) => {
     const contacts = response.data?.items[0] ?? null;
     const userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
 
-    let query = { favorites: userId };
+    let query = { favorites: userId ,typeContent: 'app'};
     let isPremium = true; // Default to true, change based on conditions below
 
     if (category) {
@@ -116,16 +116,16 @@ exports.getAllFavoritesByCategory = async (req, res, next) => {
 
       if (hasFullAccess) {
         // Full access, show all favorite music
-        musicList = await Project.find(query).populate('categories');
+        musicList = await Music.find(query).populate('categories');
       } else if (hasLimitedAccess) {
         // Limited access, show only non-premium and specific premium content in favorites
      
-        musicList = await Project.find(query).populate('categories');
+        musicList = await Music.find(query).populate('categories');
         isPremium = false; // Set isPremium to false as we are fetching non-premium music
       } else {
         // No specific access, show only non-premium favorite music
       
-        musicList = await Project.find(query).populate('categories');
+        musicList = await Music.find(query).populate('categories');
         isPremium = false; // Set isPremium to false as we are fetching non-premium music
       }
 
