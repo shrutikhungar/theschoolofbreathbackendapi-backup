@@ -151,8 +151,6 @@ exports.deleteUser = async (req, res, next) => {
       { $pull: { favorites: userId } }
     );
 
-   
-
     // Delete the user
     await User.findByIdAndDelete(userId);
 
