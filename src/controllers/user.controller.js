@@ -1,8 +1,7 @@
-const { Types } = require("mongoose");
+
 const { contactTarget, img, jwtSecret, socketUrl } = require("../configs/vars");
 const User = require("../models/user.model");
 const Music = require("../models/music.model");
-const Video = require("../models/videos.model");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const hashPassword = require("../utils/hasPassword");
@@ -124,6 +123,43 @@ exports.updateSubscriptionStatus = async (req, res, next) => {
       return res.status(404).json({ success: false, info: "User not found" });
     }
     return res.status(200).json({ success: true, info: "Subscription status updated",user:data});
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Add this to your user controller file
+
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const userId = req.user._id; // Get ID from authenticated user
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        info: "User not found"
+      });
+    }
+
+   
+
+    // Remove user's favorites from Music collection
+    await Music.updateMany(
+      { favorites: userId },
+      { $pull: { favorites: userId } }
+    );
+
+   
+
+    // Delete the user
+    await User.findByIdAndDelete(userId);
+
+    return res.status(200).json({
+      success: true,
+      info: "User account successfully deleted"
+    });
 
   } catch (error) {
     next(error);

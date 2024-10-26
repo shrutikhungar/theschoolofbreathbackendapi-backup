@@ -7,6 +7,9 @@ router
     .route('/me')
     .get(authorize(), controller.getOne)
 router
+    .route('/delete')
+    .delete(authorize(), controller.deleteUser)
+router
     .route('/users/:email')
     .get(controller.getUserByEmail)
 
