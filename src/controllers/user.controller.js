@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const hashPassword = require("../utils/hasPassword");
 const sendEmail = require("../utils/email")
 const axios = require("axios");
+const { Types } = require("mongoose");
 
 exports.addFavoriteMusic = async (req, res, next) => {
   try {
