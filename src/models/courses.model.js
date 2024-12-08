@@ -1,0 +1,70 @@
+// models/Course.js
+const mongoose = require('mongoose');
+
+const lessonSchema = new mongoose.Schema({
+  id: String,
+  title: String,
+  videoUrl: String,
+  type: {
+    type: String,
+    enum: ['video', 'file'],
+    default: 'video'
+  },
+  isFromYoutube: {
+    type: Boolean,
+    default: false
+  },
+  file: String
+});
+
+const sectionSchema = new mongoose.Schema({
+  section: String,
+  lessons: [lessonSchema]
+});
+
+const authorSchema = new mongoose.Schema({
+  name: String,
+  bio: String,
+  profileImage: String
+});
+
+const courseSchema = new mongoose.Schema({
+   id: String, 
+  systemeIoId: {
+    type: String,
+    sparse: true // Allows null/undefined values
+  },
+  creationMethod: {
+    type: String,
+    enum: ['fromScratch', 'fromSystemeio'],
+    required: true
+  },
+  title: String,
+  description: String,
+  image: String,
+  type: String,
+  days: String,
+  time: {
+    type: String,
+    default: 'Watch At your Own Pace'
+  },
+  courseTheme: String,
+  author: authorSchema,
+  sections: [sectionSchema],
+  accessTags: [{
+    type: String,
+    enum: [
+      'Enrolled_Holistic Membership',
+      'Enrolled_to_Sleep_Membership',
+      'Purchased_9-Day Breathwork Course',
+      'Purchased_9-Day Meditation Course',
+      'Purchased_Swara_Yoga_Course',
+      'Purchased_9-Day Bliss Course',
+      'Purchased_12-Day ThirdEye Course'
+    ]
+  }]
+}, {
+  timestamps: true
+});
+
+module.exports = mongoose.model('Course', courseSchema);

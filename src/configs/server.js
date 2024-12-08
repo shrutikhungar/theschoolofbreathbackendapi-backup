@@ -15,9 +15,9 @@ const uploadRoutes = require('../routes/upload.routes')
 const videosRoutes = require('../routes/video.routes')
 const categories = require('../routes/categories.routes')
 const appMusics = require('../routes/music.app.routes')
-
-
-
+const courses = require('../routes/course.routes')
+const theme = require('../routes/theme.routes')
+const swaggerSetup = require('../../swagger');
 const app = express()
 // Enable CORS for all routes
 app.use(cors({origin:'*'}))
@@ -48,5 +48,7 @@ app.use('/categories',categories )
 app.use('/videos',videosRoutes )
 app.use('/uploadFiles',uploadRoutes )
 app.use('/app/musics',appMusics)
-
+app.use('/courses',courses)
+app.use('/themes',theme)
+swaggerSetup(app);
 module.exports = app
