@@ -102,7 +102,66 @@ const getAccessibleCourses = (userTags) => {
 };
  */
 
-// Update API endpoint
+/**
+ * @swagger
+ * /courses/user:
+ *   get:
+ *     summary: Get all courses with access control
+ *     description: Retrieves courses and determines user access based on Systeme.io tags
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of courses with access flags
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 courses:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       systemeIoId:
+ *                         type: string
+ *                       creationMethod:
+ *                         type: string
+ *                         enum: [fromScratch, fromSystemeio]
+ *                       title:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *                       days:
+ *                         type: string
+ *                       time:
+ *                         type: string
+ *                       courseTheme:
+ *                         type: string
+ *                       accessTags:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       hasAccess:
+ *                         type: boolean
+ *                         description: Indicates if user has access to this course
+ *       401:
+ *         description: No authentication token provided
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
 exports.getCourses = async (req, res) => {
   try {
     const userEmail = req.user?.email;

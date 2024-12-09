@@ -17,11 +17,11 @@ const swaggerOptions = {
         url: 'api-music-two.vercel.app', // Replace with your Vercel URL
       },
       {
-        url: 'http://localhost:3000', // Update this to match your development or production URL
+        url: 'http://localhost:3001', // Update this to match your development or production URL
       },
     ],
   },
-  apis: ['./src/routes/*.js'], // Path to your route files
+  apis: ['./src/controllers/*.js','./src/routes/*.js'], // Path to your route files
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);

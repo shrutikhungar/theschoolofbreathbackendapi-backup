@@ -1,6 +1,73 @@
 const Theme = require("../models/theme.model");
 
-// Get all themes
+/**
+* @swagger
+* /api/themes:
+*   get:
+*     summary: Get all themes
+*     tags: [Themes]
+*     responses:
+*       200:
+*         description: List of all themes
+*         content:
+*           application/json:
+*             schema:
+*               type: array
+*               items:
+*                 type: object
+*                 properties:
+*                   _id:
+*                     type: string
+*                   name:
+*                     type: string
+*                   colors:
+*                     type: object
+*                     properties:
+*                       primaryColor:
+*                         type: string
+*                       secondaryColor:
+*                         type: string
+*                       backgroundColor:
+*                         type: string
+*                       textColor:
+*                         type: string
+*                       accentColor:
+*                         type: string
+*                       headerColor:
+*                         type: string
+*                       courseTitleColor:
+*                         type: string
+*                       instructorTextColor:
+*                         type: string
+*                       tabBackgroundColor:
+*                         type: string
+*                       dayBackgroundColor:
+*                         type: string
+*                       sectionBackgroundColor:
+*                         type: string
+*                       subsectionBackgroundColor:
+*                         type: string
+*                       lessonBackgroundColor:
+*                         type: string
+*                       reviewBackgroundColor:
+*                         type: string
+*                       descriptionColor:
+*                         type: string
+*                   isDefault:
+*                     type: boolean
+*                   createdAt:
+*                     type: string
+*                     format: date-time
+*       500:
+*         description: Server error
+*         content:
+*           application/json:
+*             schema:
+*               type: object
+*               properties:
+*                 message:
+*                   type: string
+*/
 exports.getThemes = async (req, res) => {
     try {
       const themes = await Theme.find();

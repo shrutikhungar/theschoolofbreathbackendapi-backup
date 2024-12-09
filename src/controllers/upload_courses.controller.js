@@ -19,48 +19,7 @@ const fetchSystemeIoCourses = async () => {
   }
 };
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Course:
- *       type: object
- *       properties:
- *         name:
- *           type: string
- *           description: Name of the course
- *         description:
- *           type: string
- *           description: Description of the course
- *         creationMethod:
- *           type: string
- *           enum: [fromScratch, fromSystemeio]
- *           description: The method by which the course was created
- *         systemeIoId:
- *           type: string
- *           description: The Systeme.io ID if the course is imported
- */
 
-/**
- * @swagger
- * /api/courses/systemeio:
- *   get:
- *     summary: Get all courses from Systeme.io
- *     responses:
- *       200:
- *         description: List of courses from Systeme.io
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 courses:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Course'
- *       500:
- *         description: Internal server error
- */
 exports.getSystemeIoCourses = async (req, res) => {
   try {
     const courses = await fetchSystemeIoCourses();
