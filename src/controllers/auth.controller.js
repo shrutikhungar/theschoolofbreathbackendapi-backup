@@ -123,7 +123,7 @@ exports.generateResetToken = async (req, res, next) => {
     secure: true, // upgrade later with STARTTLS
     auth: {
       user: "theschoolofbreathai@gmail.com",
-      pass: "hfsn ajyg uwon cona",
+      pass: "hbew ydyt twrj wnkv",
     },
   });
 
