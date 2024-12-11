@@ -253,3 +253,7 @@ exports.getCourseById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.webHook = async (req, res) => {
+  console.log(req,res);
+}
