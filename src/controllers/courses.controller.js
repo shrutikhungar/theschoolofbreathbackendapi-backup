@@ -257,7 +257,8 @@ exports.getCourseById = async (req, res) => {
 exports.webHook = async (req, res) => {
 const userInfo = req.body 
   if(userInfo.customer){
-console.log(userInfo)
+
+console.log(userInfo.orderItem)
   }
   try{
 
