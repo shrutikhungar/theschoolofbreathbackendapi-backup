@@ -255,5 +255,6 @@ exports.getCourseById = async (req, res) => {
 };
 
 exports.webHook = async (req, res) => {
-  const secret = 'ku0xuba35oiflvuueo4e99nxmifn72oo0x18xngcmlqthk8dmuj6spipz2hf7on8'; const webhookSecret = req.headers['secret-key']; if (webhookSecret !== secret) { return res.status(403).send('Invalid secret key'); } const data = req.body; console.log('Received webhook data:', data); // Handle the data based on the event type if (data.type === 'contact.created') { // Process contact creation } else if (data.type === 'tag.added') { // Process tag addition } res.status(200).send('Webhook received'
+  console.log(req.body);
+  const secret = 'd678-5e9a-6975'; const webhookSecret = req.headers['X-Webhook-Signature']; if (webhookSecret !== secret) { console.log('faid') } const data = req.body; console.log('Received webhook data:', data); // Handle the data based on the event type if (data.type === 'contact.created') { // Process contact creation } else if (data.type === 'tag.added') { // Process tag addition } res.status(200).send('Webhook received'
 }
