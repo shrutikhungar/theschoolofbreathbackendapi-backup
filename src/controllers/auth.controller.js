@@ -9,8 +9,17 @@ const User = require("../models/user.model");
 const bcrypt = require('bcryptjs');
 const crypto = require("crypto");
 const nodemailer = require('nodemailer')
-
-
+const axios = require("axios");
+const availableTags  = [
+  { id: '1', name: 'Enrolled_Holistic Membership', },
+  { id: '2', name: 'Enrolled_to_Sleep_Membership',  },
+  { id: '3', name: 'Purchased_9-Day Breathwork Course' },
+  { id: '4', name: 'Purchased_9-Day Meditation Course',  },
+  { id: '5', name: 'Purchased_Swara_Yoga_Course',  },
+  { id: '6', name: 'Purchased_9-Day Bliss Course',  },
+  { id: '7', name: 'Purchased_12-Day ThirdEye Course',  }, 
+  { id: '8', name: 'testtag' }, 
+];
 
 const validateUserData = async (userData) => {
   const validationError = new User(userData).validateSync();
@@ -50,19 +59,73 @@ exports.store = async (req, res, next) => {
   }
 };
 
+const getFieldValue = (fields, slug) => {
+  const field = fields.find(f => f.slug === slug);
+  return field ? field.value : '';
+};
 
 exports.login = async (req, res, next) => {
   try {
-    let em = req.body.email.toLowerCase();
+    let em = req.body.email;
     req.body.email = em;
+
+    // First check Systeme.io before any local validation
+    try {
+      const response = await axios.get(`https://api.systeme.io/api/contacts?email=${em}`, {
+        headers: {
+          'x-api-key': process.env.API_SYSTEME_KEY
+        },
+      });
+
+      const contact = response.data?.items[0];
+      if (contact) {
+        // Check if user has any of the available tags
+        const userTags = contact.tags.map(tag => tag.name);
+        const hasValidTag = userTags.some(tag => 
+          availableTags.some(availableTag => availableTag.name === tag)
+        );
+
+        if (hasValidTag) {
+          // Check if user already exists in our DB
+          let existingUser = await User.findOne({ email: em });
+          
+          if (!existingUser) {
+            // Get fields from Systeme.io response
+            const fullName = getFieldValue(contact.fields, 'first_name');
+
+            // Create new user with fields from Systeme.io
+            const newUser = new User({
+              email: em,
+              password: 'welcome123', // Will be hashed by the model
+              fullName: fullName,
+            });
+
+            await newUser.save();
+            // Set the password for the request
+            req.body.password = 'welcome123';
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Systeme.io API Error:', error);
+    }
+
+    // Now try local authentication
     const resp = await User.findAndGenerateToken(req.body);
-    if (resp == null)
-      return res
-        .status(400)
-        .json({ success: false, info: "Credentials not found" });
-    else if (!resp.success) return res.status(400).json(resp);
-    const { user, token } = resp;
-    return res.status(200).json({ success: true, token, user });
+    
+    if (resp === null || !resp.success) {
+      return res.status(400).json({ 
+        success: false, 
+        info: "Credentials not found" 
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      token: resp.token, 
+      user: resp.user 
+    });
+
   } catch (error) {
     return next(error);
   }

@@ -254,16 +254,3 @@ exports.getCourseById = async (req, res) => {
   }
 };
 
-exports.webHook = async (req, res) => {
-const userInfo = req.body 
-  if(userInfo.customer){
-
-console.log(userInfo.orderItem)
-  }
-  try{
-
-  }catch(error){
-    res.status(500).json({ message: error.message });
-  }
-  /* const secret = 'd678-5e9a-6975'; const webhookSecret = req.headers['X-Webhook-Signature']; if (webhookSecret !== secret) { console.log('faid') } const data = req.body; console.log('Received webhook data:', data); */
-}
