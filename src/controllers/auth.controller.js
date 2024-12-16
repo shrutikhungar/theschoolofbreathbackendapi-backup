@@ -18,7 +18,7 @@ const availableTags  = [
   { id: '5', name: 'Purchased_Swara_Yoga_Course',  },
   { id: '6', name: 'Purchased_9-Day Bliss Course',  },
   { id: '7', name: 'Purchased_12-Day ThirdEye Course',  }, 
-  { id: '8', name: 'testtag' }, 
+ 
 ];
 
 const validateUserData = async (userData) => {

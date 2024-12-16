@@ -6,7 +6,7 @@ const { authorize } = require("../utils/auth");
 
 let router = Router();
 
-router.route("/user").get(authorize(), controller.getCourses);
+router.route("/user").get( controller.getCourses);
 
 router.route("/usersystemeio").get(  CoursesController.getSystemeIoCourses);
 router.route("/create").post(  CoursesController.createCourse);

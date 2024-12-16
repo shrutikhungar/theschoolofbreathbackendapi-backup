@@ -164,7 +164,8 @@ const getAccessibleCourses = (userTags) => {
  */
 exports.getCourses = async (req, res) => {
   try {
-    const userEmail = req.user?.email;
+    // Query params: /courses?email=user@example.com
+  const userEmail = req.query.email;
     const courses = await Course.find();
 
     if (!userEmail) {
