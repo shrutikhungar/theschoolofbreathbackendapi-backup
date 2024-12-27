@@ -66,5 +66,10 @@ const courseSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
+// Add a virtual property for ratings
+courseSchema.virtual('ratings').get(async function() {
+  const Review = mongoose.model('Review');
+  const stats = await Review.getCourseStats(this._id);
+  return stats[0] || { average: 0, count: 0, distribution: {} };
+});
 module.exports = mongoose.model('Course', courseSchema);

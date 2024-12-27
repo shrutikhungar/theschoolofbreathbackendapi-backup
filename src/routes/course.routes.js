@@ -16,6 +16,6 @@ router.route("/course/:id").get(  CoursesController.getCourseById);
 router.route("/scratch").get(  CoursesController.getScratchCourses);
 
 router.route("/scratch/:id").delete(  CoursesController.deleteScratchCourse);
-
+router.route("/delete/:id").delete(CoursesController.deleteCourse)
 
 module.exports = router;

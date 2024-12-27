@@ -56,7 +56,6 @@ exports.updateCourse = async (req, res) => {
     const { _id, __v, createdAt, updatedAt, ...updateData } = courseData;
 
     let course;
-
     if (creationMethod === 'fromSystemeio') {
       course = await Course.findOneAndUpdate(
         { systemeIoId: courseData.id },
@@ -170,6 +169,24 @@ exports.deleteScratchCourse = async (req, res) => {
     if (course.creationMethod !== 'fromScratch') {
       return res.status(400).json({ message: 'Can only delete courses created from scratch' });
     }
+
+    await Course.findByIdAndDelete(id);
+    res.status(200).json({ message: 'Course deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deleteCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+  
 
     await Course.findByIdAndDelete(id);
     res.status(200).json({ message: 'Course deleted successfully' });
