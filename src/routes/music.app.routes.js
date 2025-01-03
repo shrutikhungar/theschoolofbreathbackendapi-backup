@@ -8,6 +8,8 @@ let router = Router();
 router.route("/favorites").get(authorize(), controller.getAllFavoritesByCategory);
 router.route("/preview").get( controller.getPreviewMusicsByCategory);
 router.route("/category").get(authorize(),controller.getMusicsByCategory);
+router.route("/shakra").get(authorize(),controller.getShakraMusicByCategory);
+
 
 
 module.exports = router;

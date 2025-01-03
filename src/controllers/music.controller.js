@@ -123,6 +123,13 @@ exports.getMusicsByCategory = async (req, res, next) => {
     const { category } = req.query;
     const userEmail = req.user.email;
     const userPromotionDays = req.user.promotionDays; // Assuming this is where promotion days are stored
+
+
+     // First, get the shakra category ObjectId
+    const shakraCategory = await Category.findOne({ name: 'shakra' });
+    if (!shakraCategory) {
+      return res.status(404).json({ message: "Shakra category not found in system" });
+    }
     const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
       headers: {
         'x-api-key': process.env.API_SYSTEME_KEY // Replace with the actual API key
@@ -132,18 +139,30 @@ exports.getMusicsByCategory = async (req, res, next) => {
     const contacts = response.data?.items[0] ?? null;
     const contactWithTag = contacts ? filterByName(contacts.tags, 'Enrolled_to_Membership') : null;
 
-    let query = {
-      $or: [
-        { typeContent: { $exists: false } },
-        { typeContent: { $ne: 'app' } }
-      ]
-    };
+    
     let isPremium = true; // Default to true, change based on conditions below
 
-    if (category) {
-      // Assuming 'category' is the ObjectId of the category
-      query.categories = { $in: [category] };
-    }
+        // Base query that excludes 'app' type content and shakra category
+        let query = {
+          $and: [
+            {
+              $or: [
+                { typeContent: { $exists: false } },
+                { typeContent: { $ne: 'app' } }
+              ]
+            },
+            { categories: { $ne: shakraCategory._id } }  // Always exclude shakra category
+          ]
+        };
+    
+        // If a specific category is requested
+        if (category) {
+          const requestedCategory = await Category.findOne({ name: category });
+          if (requestedCategory) {
+            // Add the category filter while maintaining shakra exclusion
+            query.$and.push({ categories: requestedCategory._id });
+          }
+        }
 
     // Initialize musicList array
     let musicList = [];
