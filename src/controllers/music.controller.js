@@ -3,6 +3,7 @@ const fs = require("fs");
 const axios = require("axios");
 const Music = require("../models/music.model");
 const ENROLLED_TAG = process.env.ENROLLED_TAG
+const Category = require('../models/categories.model')
 exports.getOne = async (req, res, next) => {
   try {
     const { slug } = req.params;
