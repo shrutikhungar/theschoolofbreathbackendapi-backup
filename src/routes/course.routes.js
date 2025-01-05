@@ -17,5 +17,6 @@ router.route("/scratch").get(  CoursesController.getScratchCourses);
 
 router.route("/scratch/:id").delete(  CoursesController.deleteScratchCourse);
 router.route("/delete/:id").delete(CoursesController.deleteCourse)
+router.put('/order', CoursesController.updateCourseOrder);
 
 module.exports = router;

@@ -166,7 +166,7 @@ exports.getCourses = async (req, res) => {
   try {
     // Query params: /courses?email=user@example.com
   const userEmail = req.query.email;
-    const courses = await Course.find();
+    const courses = await Course.find().sort({ order: 1, createdAt: -1 });
 
     if (!userEmail) {
       return res.status(200).json({

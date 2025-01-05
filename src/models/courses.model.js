@@ -48,6 +48,10 @@ const courseSchema = new mongoose.Schema({
     type: String,
     default: 'Watch At your Own Pace'
   },
+  order: {
+    type: Number,
+    default: 0
+  },
   courseTheme: String,
   author: authorSchema,
   sections: [sectionSchema],

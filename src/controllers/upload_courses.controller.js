@@ -35,9 +35,17 @@ exports.createCourse = async (req, res) => {
     const { courseData, creationMethod } = req.body;
     const { id, _id, ...courseToSave } = courseData;
 
+    // Get the highest order value
+    const highestOrder = await Course.findOne({ creationMethod: 'fromScratch' })
+      .sort({ order: -1 })
+      .select('order');
+    
+    const newOrder = (highestOrder?.order || 0) + 1;
+
     const course = await Course.create({
       ...courseToSave,
       creationMethod,
+      order: newOrder,
       ...(creationMethod === 'fromSystemeio' ? { systemeIoId: id } : {})
     });
 
@@ -82,6 +90,35 @@ exports.updateCourse = async (req, res) => {
       message: 'Course updated successfully',
       course
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+exports.updateCourseOrder = async (req, res) => {
+  try {
+    const { updates } = req.body; // Array of { id, order }
+    
+    // Use MongoDB transactions for atomic updates
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      for (const update of updates) {
+        await Course.findByIdAndUpdate(
+          update.id,
+          { $set: { order: update.order } },
+          { session }
+        );
+      }
+
+      await session.commitTransaction();
+      res.status(200).json({ message: 'Course order updated successfully' });
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -147,9 +184,11 @@ exports.updateCourse = async (req, res) => {
 };
 
  // Backend route for scratch courses
+// Modify the existing getScratchCourses function
 exports.getScratchCourses = async (req, res) => {
   try {
-    const courses = await Course.find({ creationMethod: 'fromScratch' });
+    const courses = await Course.find({ creationMethod: 'fromScratch' })
+      .sort({ order: 1, createdAt: -1 }); // Add order as primary sort, createdAt as secondary
     res.status(200).json(courses);
   } catch (error) {
     res.status(500).json({ message: error.message });
