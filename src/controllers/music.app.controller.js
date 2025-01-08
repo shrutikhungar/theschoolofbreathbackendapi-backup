@@ -23,10 +23,21 @@ const hasAnyTag = (userTags, tagsToCheck) => {
 exports.getPreviewMusicsByCategory = async (req, res, next) => {
   try {
     const { category } = req.query;
-    let query = { typeContent: 'app' };  // Add this line
+    let query = { typeContent: 'app' };
+
+    const shakraCategory = await Category.findOne({ name: 'shakra' });
+    if (!shakraCategory) {
+      return res.status(404).json({ message: "Shakra category not found" });
+    }
 
     if (category) {
-      query.categories = { $in: [category] };
+      if (category === shakraCategory._id.toString()) {
+        query.categories = shakraCategory._id;
+      } else {
+        query.categories = category;
+      }
+    } else {
+      query.categories = { $ne: shakraCategory._id };
     }
 
     const musicList = await Music.find(query).populate('categories');
@@ -41,66 +52,55 @@ exports.getMusicsByCategory = async (req, res, next) => {
   try {
     const { category } = req.query;
     const userEmail = req.user.email;
-// First, get the shakra category ObjectId
-const shakraCategory = await Category.findOne({ name: 'shakra' });
-if (!shakraCategory) {
-  return res.status(404).json({ message: "Shakra category not found" });
-}
+
+  
+
     const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
       headers: {
-        'x-api-key': process.env.API_SYSTEME_KEY, // Replace with the actual API key
+        'x-api-key': process.env.API_SYSTEME_KEY
       },
     });
 
     const contacts = response.data?.items[0] ?? null;
     const userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
 
-  
+   
+    // Base query
+    let query = { typeContent: 'app' };
 
-      // Base query with typeContent and excluding shakra category
-      let query = { 
-        typeContent: 'app',
-        categories: { $ne: shakraCategory._id }
-      };
-      // If a specific category is requested
-     // If category is provided, add it as an additional filter
-     if (category) {
-      const requestedCategory = await Category.findOne({ name: category });
-      if (requestedCategory) {
-        // If category exists, add it to the query while maintaining shakra exclusion
-        query.categories = {
-          $all: [requestedCategory._id],
-          $ne: shakraCategory._id
-        };
-      }
-      // If category doesn't exist, keep only the shakra exclusion (showing all other music)
+    const shakraCategory = await Category.findOne({ name: 'shakra' });
+    if (!shakraCategory) {
+      return res.status(404).json({ message: "Shakra category not found" });
     }
-    let isPremium = true; // Default to true, change based on conditions below
 
+    if (category) {
+      if (category === shakraCategory._id.toString()) {
+        query.categories = shakraCategory._id;
+      } else {
+        query.categories = category;
+      }
+    } else {
+      query.categories = { $ne: shakraCategory._id };
+    }
+   
 
-    // Initialize musicList array
+    let isPremium = true;
     let musicList = [];
 
     const hasFullAccess = hasAnyTag(userTags, fullAccessTags);
-      const hasLimitedAccess = hasAnyTag(userTags, limitedAccessTags);
+    const hasLimitedAccess = hasAnyTag(userTags, limitedAccessTags);
 
-      if (hasFullAccess) {
-        // Full access, show all music
-        musicList = await Music.find(query).populate('categories');
-      } else if (hasLimitedAccess) {
-        // Limited access, show only non-premium and specific premium content
-        
-        musicList = await Music.find(query).populate('categories');
-        isPremium = false; // Set isPremium to false as we are fetching non-premium music
-      } else {
-        // No specific access, show only non-premium music
-       
-        musicList = await Music.find(query).populate('categories');
-        isPremium = false; // Set isPremium to false as we are fetching non-premium music
-      }
+    if (hasFullAccess) {
+      musicList = await Music.find(query).populate('categories');
+    } else if (hasLimitedAccess) {
+      musicList = await Music.find(query).populate('categories');
+      isPremium = false;
+    } else {
+      musicList = await Music.find(query).populate('categories');
+      isPremium = false;
+    }
 
     return res.status(200).json({ musicList, isPremium });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
