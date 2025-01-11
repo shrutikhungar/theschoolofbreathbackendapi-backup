@@ -1,6 +1,7 @@
 const Music = require("../models/music.model");
 const axios = require("axios");
 const Category = require('../models/categories.model')
+const AccessChakraTagsConfig = require('../configs/access')
 const fullAccessTags = [
   'Enrolled_to_Membership',
   'Enrolled_Holistic Membership',
@@ -15,6 +16,8 @@ const limitedAccessTags = [
   'Purchased_9-Day Breathwork Course',
   'Purchased_9-Day Meditation Course'
 ];
+
+
 
 const hasAnyTag = (userTags, tagsToCheck) => {
   return tagsToCheck.some(tag => userTags.includes(tag));
@@ -187,16 +190,12 @@ exports.getShakraMusicByCategory = async (req, res, next) => {
     let isPremium = true;
     let musicList = [];
 
-    const hasFullAccess = hasAnyTag(userTags, fullAccessTags);
-    const hasLimitedAccess = hasAnyTag(userTags, limitedAccessTags);
+    const hasFullAccess = hasAnyTag(userTags, AccessChakraTagsConfig.fullAccessTagsForChakra);
+    const hasLimitedAccess = hasAnyTag(userTags, AccessChakraTagsConfig.limitedAccessTagsChakra);
 
-    if (hasFullAccess) {
+    if (hasFullAccess || hasLimitedAccess) {
       // Full access members can see all Shakra music
       musicList = await Music.find(query).populate('categories');
-    } else if (hasLimitedAccess) {
-      // Limited access members see non-premium Shakra music
-      musicList = await Music.find(query).populate('categories');
-      isPremium = false;
     } else {
       // Non-members see only non-premium Shakra music
       musicList = await Music.find(query).populate('categories');
