@@ -162,24 +162,29 @@ exports.getAllFavoritesByCategory = async (req, res, next) => {
 
 exports.getShakraMusicByCategory = async (req, res, next) => {
   try {
-    const userEmail = req.user.email;
-    const userId = req.user._id;
-
+    const userEmail = req.query.email;
+    
     // First, get the shakra category ObjectId
     const shakraCategory = await Category.findOne({ name: 'shakra' });
     if (!shakraCategory) {
       return res.status(404).json({ message: "Shakra category not found in system" });
     }
 
-    // Get user tags from Systeme.io
-    const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
-      headers: {
-        'x-api-key': process.env.API_SYSTEME_KEY,
-      },
-    });
-
-    const contacts = response.data?.items[0] ?? null;
-    const userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
+    let userTags = [];
+    try {
+      // Get user tags from Systeme.io
+      const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
+        headers: {
+          'x-api-key': process.env.API_SYSTEME_KEY,
+        },
+      });
+      const contacts = response.data?.items[0] ?? null;
+      userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
+    } catch (error) {
+      // If there's an error fetching user tags or user doesn't exist, continue with empty tags
+      console.error('Error fetching user tags:', error);
+      userTags = [];
+    }
 
     // Base query for Shakra music using ObjectId
     let query = {
@@ -223,9 +228,9 @@ exports.getShakraMusicByCategory = async (req, res, next) => {
 
   } catch (error) {
     console.error('Error in getShakraMusicByCategory:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to fetch Shakra music',
-      error: error.message 
+      error: error.message
     });
   }
 };
