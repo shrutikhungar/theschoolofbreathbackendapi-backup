@@ -5,7 +5,7 @@ const fullAccessTagsForChakra = [
   ];
 
   const limitedAccessTagsChakra = [
-    'Purchased_Chakra-Healing-Music',
+    'Purchased_7-Chakra-Healing-Music',
 
   ]
 
