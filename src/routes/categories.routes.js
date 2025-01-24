@@ -6,6 +6,7 @@ let router = Router();
 
 
 router.route("/").get(controller.getCategories)
+router.route("/admin").get(controller.getAdminCategories)
 router.route("/add").post(controller.addCategories)
 router.route("/delete/:id").delete(controller.deleteCategories)
 router.route("/edit/:id").put(controller.editCategories)

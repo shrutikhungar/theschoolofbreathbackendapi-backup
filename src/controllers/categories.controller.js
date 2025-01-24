@@ -56,6 +56,14 @@ exports.deleteCategories = async (req, res, next) =>{
 }
 exports.getCategories = async (req, res, next) =>{
     try {
+        const categories = await Category.find({ name: { $ne: 'shakra' } });
+        res.send(categories);
+    } catch (error) {
+        next(error)
+    }
+}
+exports.getAdminCategories = async (req, res, next) =>{
+    try {
         const categories = await Category.find();
         res.send(categories);
     } catch (error) {

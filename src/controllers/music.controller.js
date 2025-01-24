@@ -26,7 +26,7 @@ exports.create = async (req, res, next) => {
     const music = new Music({
         // Add other music details here, e.g., title, artist
         name: req.body.name,
-        categories:req.body.categoryId,
+        categories:req.body.categories,
         description:req.body.description,
         audioFilename: req.body.audioFilename,
         imageFilename:req.body.imageFilename,
