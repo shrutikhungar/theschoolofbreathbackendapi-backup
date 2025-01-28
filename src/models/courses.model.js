@@ -14,13 +14,22 @@ const lessonSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  file: String
+  file: String,
+  isPremium: {
+    type: Boolean,
+    default: true  // By default, lessons are premium
+  }
 });
 
 const sectionSchema = new mongoose.Schema({
   section: String,
-  lessons: [lessonSchema]
+  lessons: [lessonSchema],
+  isPremium: {
+    type: Boolean,
+    default: true  // By default, sections are premium
+  }
 });
+
 
 const authorSchema = new mongoose.Schema({
   name: String,

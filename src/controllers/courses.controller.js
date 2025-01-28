@@ -164,16 +164,28 @@ const getAccessibleCourses = (userTags) => {
  */
 exports.getCourses = async (req, res) => {
   try {
-    // Query params: /courses?email=user@example.com
-  const userEmail = req.query.email;
+    const userEmail = req.query.email;
     const courses = await Course.find().sort({ order: 1, createdAt: -1 });
 
     if (!userEmail) {
-      return res.status(200).json({
-        courses: courses.map(course => ({
-          ...course.toObject(),
+      // For non-authenticated users, return courses with only free content
+      const coursesWithLimitedAccess = courses.map(course => {
+        const processedCourse = course.toObject();
+        processedCourse.sections = processedCourse.sections.map(section => {
+          if (section.isPremium) {
+            // If section is premium, only show free lessons if any
+            section.lessons = section.lessons.filter(lesson => !lesson.isPremium);
+          }
+          return section;
+        }).filter(section => section.lessons.length > 0); // Only include sections with available lessons
+        return {
+          ...processedCourse,
           hasAccess: false
-        }))
+        };
+      });
+
+      return res.status(200).json({
+        courses: coursesWithLimitedAccess
       });
     }
 
@@ -187,15 +199,32 @@ exports.getCourses = async (req, res) => {
     const contacts = response.data?.items[0] ?? null;
     const userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
 
-    // Check access for each course
+    // Process courses based on user access
     const coursesWithAccess = courses.map(course => {
       const hasFullAccess = userTags.some(tag => fullAccessTags.includes(tag));
       const hasSpecificAccess = course.accessTags.some(tag => userTags.includes(tag));
+      const courseObj = course.toObject();
 
-      return {
-        ...course.toObject(),
-        hasAccess: hasFullAccess || hasSpecificAccess
-      };
+      if (hasFullAccess || hasSpecificAccess) {
+        // User has full access to this course
+        return {
+          ...courseObj,
+          hasAccess: true
+        };
+      } else {
+        // Limited access: only show free content
+        courseObj.sections = courseObj.sections.map(section => {
+          if (section.isPremium) {
+            section.lessons = section.lessons.filter(lesson => !lesson.isPremium);
+          }
+          return section;
+        }).filter(section => section.lessons.length > 0);
+
+        return {
+          ...courseObj,
+          hasAccess: false
+        };
+      }
     });
 
     return res.status(200).json({ courses: coursesWithAccess });

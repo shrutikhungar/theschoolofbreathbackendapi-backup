@@ -42,8 +42,19 @@ exports.createCourse = async (req, res) => {
     
     const newOrder = (highestOrder?.order || 0) + 1;
 
+    // Process sections and lessons to ensure premium properties are set
+    const processedSections = courseToSave.sections.map(section => ({
+      ...section,
+      isPremium: section.isPremium ?? true, // Default to premium if not specified
+      lessons: section.lessons.map(lesson => ({
+        ...lesson,
+        isPremium: lesson.isPremium ?? true // Default to premium if not specified
+      }))
+    }));
+
     const course = await Course.create({
       ...courseToSave,
+      sections: processedSections,
       creationMethod,
       order: newOrder,
       ...(creationMethod === 'fromSystemeio' ? { systemeIoId: id } : {})
@@ -63,6 +74,16 @@ exports.updateCourse = async (req, res) => {
     const { courseData, creationMethod } = req.body;
     const { _id, __v, createdAt, updatedAt, ...updateData } = courseData;
 
+    // Process sections and lessons to maintain premium properties
+    updateData.sections = updateData.sections.map(section => ({
+      ...section,
+      isPremium: section.isPremium ?? true, // Maintain existing or default to premium
+      lessons: section.lessons.map(lesson => ({
+        ...lesson,
+        isPremium: lesson.isPremium ?? true // Maintain existing or default to premium
+      }))
+    }));
+
     let course;
     if (creationMethod === 'fromSystemeio') {
       course = await Course.findOneAndUpdate(
@@ -71,9 +92,8 @@ exports.updateCourse = async (req, res) => {
         { new: true }
       );
     } else {
-      // Use _id for scratch courses
       course = await Course.findByIdAndUpdate(
-        _id, // Use MongoDB _id
+        _id,
         updateData,
         { 
           new: true,
