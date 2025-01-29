@@ -9,6 +9,7 @@ const Roles = ["user", 'admin', "branch", "partner"]
 const handleJWT = (req, res, next, roles) => async (err, user, info) => {
   const error = err || info;
   if (!user) {
+    console.log(user)
     return next('Unauthorized')
   }
   if (roles === LOGGED_USER) {
