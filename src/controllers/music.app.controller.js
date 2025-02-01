@@ -171,19 +171,21 @@ exports.getShakraMusicByCategory = async (req, res, next) => {
     }
 
     let userTags = [];
-    try {
-      // Get user tags from Systeme.io
-      const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
-        headers: {
-          'x-api-key': process.env.API_SYSTEME_KEY,
-        },
-      });
-      const contacts = response.data?.items[0] ?? null;
-      userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
-    } catch (error) {
-      // If there's an error fetching user tags or user doesn't exist, continue with empty tags
-      console.error('Error fetching user tags:', error);
-      userTags = [];
+    if(userEmail){
+      try {
+        // Get user tags from Systeme.io
+        const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
+          headers: {
+            'x-api-key': process.env.API_SYSTEME_KEY,
+          },
+        });
+        const contacts = response.data?.items[0] ?? null;
+        userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
+      } catch (error) {
+        // If there's an error fetching user tags or user doesn't exist, continue with empty tags
+        console.error('Error fetching user tags:', error);
+        userTags = [];
+      }
     }
 
     // Base query for Shakra music using ObjectId

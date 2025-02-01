@@ -1,6 +1,11 @@
 const { Schema, model } = require("mongoose");
 const mongoosePaginate = require("mongoose-paginate-v2");
 
+
+/**
+ * Video Content Schema
+ * @private
+ */
 const VideoContent = new Schema(
   {
     title: {
@@ -11,7 +16,12 @@ const VideoContent = new Schema(
       type: String,
       default: "",
     },
+  
     videoUrl: {
+      type: String,
+      required: true,
+    },
+    thumbnailUrl: {
       type: String,
       required: true,
     },
@@ -20,13 +30,13 @@ const VideoContent = new Schema(
       enum: ['mantra', 'youtube'],
       required: true
     },
-    thumbnailUrl: {
-      type: String,
-      default: ""
-    },
     position: {
       type: Number,
       default: 0,
+    },
+    isPremium: {
+      type: Boolean,
+      default: false
     },
     isActive: {
       type: Boolean,
@@ -34,12 +44,9 @@ const VideoContent = new Schema(
     },
     views: {
       type: Number,
-      default: 0
+      default: 0,
     },
-    favorites: [{ 
-      type: Schema.Types.ObjectId, 
-      ref: "User" 
-    }]
+   
   },
   {
     timestamps: true,
@@ -48,6 +55,30 @@ const VideoContent = new Schema(
   }
 );
 
+// Add pagination plugin for large video collections
 VideoContent.plugin(mongoosePaginate);
+
+// Middleware to increment views on find operations
+VideoContent.post("findOne", async function (result) {
+  if (result) {
+    result.views += 1;
+    await result.save();
+  }
+});
+
+// Virtual for getting most viewed videos
+VideoContent.virtual("moreViewed").get(async function () {
+  try {
+    const VideoContent = this.model("VideoContent");
+    const mostViewed = await VideoContent.find({})
+      .sort({ views: -1 })
+      .limit(5)
+      .lean();
+    return mostViewed;
+  } catch (error) {
+    return [];
+  }
+});
+
 const VideoContentSchema = model("VideoContent", VideoContent);
 module.exports = VideoContentSchema;
