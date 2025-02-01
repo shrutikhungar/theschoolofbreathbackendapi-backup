@@ -18,7 +18,7 @@ router.post("/", apiKeyAuth, controller.createVideoContent);
 router.put("/:videoId",apiKeyAuth, controller.updateVideoContent);
 router.delete("/:id", apiKeyAuth, controller.deleteVideoContent);
 router.put("/position/bulk", apiKeyAuth, controller.updatePosition);
-router.put("/favorite/:id", apiKeyAuth, controller.toggleFavorite);
+router.put("/favorite/:id", controller.toggleFavorite);
 
 
 
