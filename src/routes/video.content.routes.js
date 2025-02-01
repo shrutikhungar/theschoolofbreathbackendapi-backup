@@ -1,22 +1,22 @@
 const { Router } = require("express");
 const controller = require("../controllers/viedo.content.controller");
-const { apiKeyAuth } = require("../utils/apiKeyAuth");
+
 
 const router = Router();
 
 //app
-router.get("/videos", apiKeyAuth,controller.getVideos);
+router.get("/videos", controller.getVideos);
 
 
 
 // Public routes
-router.get("/",apiKeyAuth, controller.getAllVideoContent);
-router.get("/:id",apiKeyAuth, controller.getVideoContentById);
+router.get("/", controller.getAllVideoContent);
+router.get("/:id", controller.getVideoContentById);
 
 // Protected routes
-router.post("/", apiKeyAuth, controller.createVideoContent);
-router.put("/:videoId",apiKeyAuth, controller.updateVideoContent);
-router.delete("/:id", apiKeyAuth, controller.deleteVideoContent);
+router.post("/",  controller.createVideoContent);
+router.put("/:videoId", controller.updateVideoContent);
+router.delete("/:id", controller.deleteVideoContent);
 router.put("/position/bulk", controller.updatePosition);
 router.put("/favorite/:id", controller.toggleFavorite);
 
