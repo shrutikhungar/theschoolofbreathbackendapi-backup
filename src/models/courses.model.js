@@ -4,10 +4,17 @@ const mongoose = require('mongoose');
 const lessonSchema = new mongoose.Schema({
   id: String,
   title: String,
-  videoUrl: String,
+  videoUrl: {
+    type: String,
+    default: null
+  },
+  audioUrl: {
+    type: String,
+    default: null
+  },
   type: {
     type: String,
-    enum: ['video', 'file'],
+    enum: ['video', 'file','audio'],
     default: 'video'
   },
   isFromYoutube: {
