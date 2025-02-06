@@ -1,5 +1,16 @@
 const VideoContent = require("../models/video.content.model");
 const axios = require("axios");
+
+const fullAccessTagsVideo = [
+  'Enrolled_to_Membership',
+  'Enrolled_Holistic Membership',
+
+];
+
+
+const hasAnyTag = (userTags, tagsToCheck) => {
+  return tagsToCheck.some(tag => userTags.includes(tag));
+};
 exports.createVideoContent = async (req, res) => {
   try {
     const { title, description, videoUrl, type, thumbnailUrl } = req.body;
@@ -58,10 +69,8 @@ exports.getVideos = async (req, res) => {
           const contacts = response.data?.items[0] ?? null;
           const userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
 
-          const hasFullAccess = hasAnyTag(userTags, fullAccessTags);
-          const hasLimitedAccess = hasAnyTag(userTags, limitedAccessTags);
-
-          hasAccess = hasFullAccess || hasLimitedAccess;
+          const hasFullAccess = hasAnyTag(userTags, fullAccessTagsVideo);     
+          hasAccess = hasFullAccess 
         } catch (error) {
           console.error('Error checking access:', error);
           hasAccess = false;
