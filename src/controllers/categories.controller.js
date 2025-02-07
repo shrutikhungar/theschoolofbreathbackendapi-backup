@@ -54,9 +54,11 @@ exports.deleteCategories = async (req, res, next) =>{
         next(error)
     }
 }
-exports.getCategories = async (req, res, next) =>{
+exports.getCategories = async (req, res, next) => {
     try {
-        const categories = await Category.find({ name: { $ne: 'shakra' } });
+        const categories = await Category.find({ 
+            name: { $nin: ['shakra', 'guided meditation'] } 
+        });
         res.send(categories);
     } catch (error) {
         next(error)

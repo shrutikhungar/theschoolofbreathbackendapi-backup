@@ -28,19 +28,19 @@ exports.getPreviewMusicsByCategory = async (req, res, next) => {
     const { category } = req.query;
     let query = { typeContent: 'app' };
 
-    const shakraCategory = await Category.findOne({ name: 'shakra' });
-    if (!shakraCategory) {
-      return res.status(404).json({ message: "Shakra category not found" });
-    }
+    // Find categories to exclude
+    const excludedCategories = await Category.find({ 
+      name: { $in: ['shakra', 'guided meditation'] } 
+    });
 
+    const excludedCategoryIds = excludedCategories.map(cat => cat._id);
+
+    // Add exclusion to the query
+    query.categories = { $nin: excludedCategoryIds };
+
+    // If a specific category is requested
     if (category) {
-      if (category === shakraCategory._id.toString()) {
-        query.categories = shakraCategory._id;
-      } else {
-        query.categories = category;
-      }
-    } else {
-      query.categories = { $ne: shakraCategory._id };
+      query.categories.$in = [category];
     }
 
     const musicList = await Music.find(query).populate('categories');
@@ -50,13 +50,10 @@ exports.getPreviewMusicsByCategory = async (req, res, next) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 exports.getMusicsByCategory = async (req, res, next) => {
   try {
     const { category } = req.query;
     const userEmail = req.user.email;
-
-  
 
     const response = await axios.get(`https://api.systeme.io/api/contacts?email=${userEmail}`, {
       headers: {
@@ -67,25 +64,23 @@ exports.getMusicsByCategory = async (req, res, next) => {
     const contacts = response.data?.items[0] ?? null;
     const userTags = contacts ? contacts.tags.map(tag => tag.name) : [];
 
-   
     // Base query
     let query = { typeContent: 'app' };
 
-    const shakraCategory = await Category.findOne({ name: 'shakra' });
-    if (!shakraCategory) {
-      return res.status(404).json({ message: "Shakra category not found" });
-    }
+    // Find categories to exclude
+    const excludedCategories = await Category.find({ 
+      name: { $in: ['shakra', 'guided meditation'] } 
+    });
 
+    const excludedCategoryIds = excludedCategories.map(cat => cat._id);
+
+    // Add exclusion to the query
+    query.categories = { $nin: excludedCategoryIds };
+
+    // If a specific category is requested
     if (category) {
-      if (category === shakraCategory._id.toString()) {
-        query.categories = shakraCategory._id;
-      } else {
-        query.categories = category;
-      }
-    } else {
-      query.categories = { $ne: shakraCategory._id };
+      query.categories.$in = [category];
     }
-   
 
     let isPremium = true;
     let musicList = [];
