@@ -4,6 +4,7 @@ const Course = require("../models/courses.model");
 // Access Rules
 const fullAccessTags = ["Enrolled_Holistic Membership"];
 const CourseProgress = require("../models/userProgress.model");
+const User = require("../models/user.model");
 
 const limitedAccessRules = {
   Enrolled_to_Sleep_Membership: ["7"],
@@ -171,23 +172,24 @@ exports.getCourses = async (req, res) => {
     const courses = await Course.find().sort({ order: 1, createdAt: -1 });
 
     if (!userEmail) {
-      // For non-authenticated users, return courses with only free content
+      // Para usuarios no autenticados, mostrar solo contenido gratuito
       const coursesWithLimitedAccess = courses.map((course) => {
         const processedCourse = course.toObject();
         processedCourse.sections = processedCourse.sections
           .map((section) => {
             if (section.isPremium) {
-              // If section is premium, only show free lessons if any
               section.lessons = section.lessons.filter(
                 (lesson) => !lesson.isPremium
               );
             }
+            section.lessons.forEach(lesson => lesson.completed = false);
             return section;
           })
-          .filter((section) => section.lessons.length > 0); // Only include sections with available lessons
+          .filter((section) => section.lessons.length > 0);
         return {
           ...processedCourse,
           hasAccess: false,
+          progress: 0, // Sin progreso
         };
       });
 
@@ -196,7 +198,7 @@ exports.getCourses = async (req, res) => {
       });
     }
 
-    // Get user tags from Systeme.io
+    // Obtener etiquetas del usuario en Systeme.io
     const response = await axios.get(
       `https://api.systeme.io/api/contacts?email=${userEmail}`,
       {
@@ -209,7 +211,17 @@ exports.getCourses = async (req, res) => {
     const contacts = response.data?.items[0] ?? null;
     const userTags = contacts ? contacts.tags.map((tag) => tag.name) : [];
 
-    // Process courses based on user access
+    // Obtener progreso del usuario en los cursos
+    const user = await User.findOne({ email: userEmail });
+    const userProgresses = user ? await CourseProgress.find({ userId: user._id }) : [];
+
+    // Mapear los progresos en un objeto para acceso rápido
+    const progressMap = userProgresses.reduce((acc, progress) => {
+      acc[progress.courseId] = progress;
+      return acc;
+    }, {});
+
+    // Procesar cursos con acceso y progreso
     const coursesWithAccess = courses.map((course) => {
       const hasFullAccess = userTags.some((tag) =>
         fullAccessTags.includes(tag)
@@ -219,14 +231,33 @@ exports.getCourses = async (req, res) => {
       );
       const courseObj = course.toObject();
 
+      const progressData = progressMap[course._id];
+      const completionPercentage = progressData ? progressData.completionPercentage : 0;
+
+      // Marcar las lecciones como completadas o no
+      courseObj.sections.forEach((section) => {
+        section.lessons.forEach((lesson) => {
+          if (progressData) {
+            const sectionProgress = progressData.sectionsProgress.find(sp => sp.sectionId.toString() === section._id.toString());
+            if (sectionProgress) {
+              const lessonProgress = sectionProgress.lessonsProgress.find(lp => lp.lessonId.toString() === lesson._id.toString());
+              lesson.completed = lessonProgress ? lessonProgress.completed : false;
+            } else {
+              lesson.completed = false;
+            }
+          } else {
+            lesson.completed = false;
+          }
+        });
+      });
+
       if (hasFullAccess || hasSpecificAccess) {
-        // User has full access to this course
         return {
           ...courseObj,
           hasAccess: true,
+          progress: completionPercentage,
         };
       } else {
-        // Limited access: only show free content
         courseObj.sections = courseObj.sections
           .map((section) => {
             if (section.isPremium) {
@@ -241,6 +272,7 @@ exports.getCourses = async (req, res) => {
         return {
           ...courseObj,
           hasAccess: false,
+          progress: completionPercentage,
         };
       }
     });
@@ -250,6 +282,8 @@ exports.getCourses = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 // Get specific course by ID with access check
 exports.getCourseById = async (req, res) => {
   try {
@@ -303,221 +337,4 @@ exports.getCourseById = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};
-
-exports.getCourseProgress = async (req, res, next) => {
-  const { courseId } = req.params;
-  const userId = req.user._id;
-
-  let progress = await CourseProgress.findOne({ courseId, userId });
-
-  if (!progress) {
-    const course = await Course.findById(courseId);
-    if (!course) {
-      return next(new AppError("Course not found", 404));
-    }
-
-    progress = await CourseProgress.create({
-      userId,
-      courseId,
-      sectionsProgress: course.sections.map((section) => ({
-        sectionId: section._id,
-        lessonsProgress: section.lessons.map((lesson) => ({
-          lessonId: lesson._id,
-          completed: false,
-        })),
-      })),
-    });
-  }
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      progress,
-    },
-  });
-};
-
-
-exports.markLessonAsCompleted = async (req, res, next) => {
-  const { courseId, sectionId, lessonId } = req.params;
-  const userId = req.user._id;
-
-
-  const course = await Course.findById(courseId);
-  if (!course) {
-    return res.status(404).json({ 
-      status: "error",
-      message: "Course not found" 
-    });
-  }
-
-
-  let progress = await CourseProgress.findOne({ courseId, userId });
-
-  
-  if (!progress) {
-
-    const initialSectionsProgress = course.sections.map(section => ({
-      sectionId: section._id.toString(),
-      lessonsProgress: section.lessons.map(lesson => ({
-        lessonId: lesson._id.toString(),
-        completed: false,
-        watchTimeInSeconds: 0,
-        lastWatched: null,
-        status: 'pending' // pending, in-progress, completed
-      }))
-    }));
-
-    progress = await CourseProgress.create({
-      userId,
-      courseId,
-      startDate: new Date(),
-      lastAccessDate: new Date(),
-      completionPercentage: 0,
-      isCompleted: false,
-      sectionsProgress: initialSectionsProgress
-    });
-  }
-
-  let sectionProgress = progress.sectionsProgress.find(
-    s => s.sectionId.toString() === sectionId
-  );
-
-  if (!sectionProgress) {
-    const courseSection = course.sections.find(s => s._id.toString() === sectionId);
-    if (courseSection) {
-      const newSectionProgress = {
-        sectionId: sectionId,
-        lessonsProgress: courseSection.lessons.map(lesson => ({
-          lessonId: lesson._id.toString(),
-          completed: false,
-          watchTimeInSeconds: 0,
-          lastWatched: null,
-          status: 'pending'
-        }))
-      };
-      progress.sectionsProgress.push(newSectionProgress);
-      sectionProgress = newSectionProgress;
-    }
-  }
-
-
-  let lessonProgress = sectionProgress?.lessonsProgress.find(
-    l => l.lessonId.toString() === lessonId
-  );
-
-  if (!lessonProgress && sectionProgress) {
-    const courseSection = course.sections.find(s => s._id.toString() === sectionId);
-    const courseLesson = courseSection?.lessons.find(l => l._id.toString() === lessonId);
-    
-    if (courseLesson) {
-      lessonProgress = {
-        lessonId: lessonId,
-        completed: false,
-        watchTimeInSeconds: 0,
-        lastWatched: null,
-        status: 'pending'
-      };
-      sectionProgress.lessonsProgress.push(lessonProgress);
-    }
-  }
-
-  // 8. Marcar la lección como completada
-  if (lessonProgress) {
-    lessonProgress.completed = true;
-    lessonProgress.lastWatched = new Date();
-    lessonProgress.status = 'completed';
-    await progress.updateCompletionPercentage();
-    await progress.save();
-  }
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      progress
-    }
-  });
-}
-
-
-exports.getCourseProgress = async (req, res, next) => {
-  const { courseId } = req.params;
-  const userId = req.user._id;
-
-  
-  const course = await Course.findById(courseId);
-  if (!course) {
-    return res.status(404).json({
-      status: "error",
-      message: "Course not found"
-    });
-  }
-
-
-  let progress = await CourseProgress.findOne({ courseId, userId });
-
-  
-  if (!progress) {
-    const initialSectionsProgress = course.sections.map(section => ({
-      sectionId: section._id.toString(),
-      lessonsProgress: section.lessons.map(lesson => ({
-        lessonId: lesson._id.toString(),
-        completed: false,
-        watchTimeInSeconds: 0,
-        lastWatched: null,
-        status: 'pending'
-      }))
-    }));
-
-    progress = await CourseProgress.create({
-      userId,
-      courseId,
-      startDate: new Date(),
-      lastAccessDate: new Date(),
-      completionPercentage: 0,
-      isCompleted: false,
-      sectionsProgress: initialSectionsProgress
-    });
-  }
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      progress
-    }
-  });
-}
-exports.updateLessonProgress = async (req, res, next) => {
-  const { courseId, sectionId, lessonId } = req.params;
-  const { watchTimeInSeconds } = req.body;
-  const userId = req.user._id;
-
-  let progress = await CourseProgress.findOne({ courseId, userId });
-
-  if (!progress) {
-    return next(new AppError("Course progress not found", 404));
-  }
-
-  await progress.updateLessonWatchTime(sectionId, lessonId, watchTimeInSeconds);
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      progress,
-    },
-  });
-};
-
-exports.getAllUserCourseProgress = async (req, res, next) => {
-  const userId = req.user._id;
-
-  const progresses = await CourseProgress.find({ userId });
-
-  res.status(200).json({
-    status: "success",
-    data: {
-      progresses,
-    },
-  });
 };

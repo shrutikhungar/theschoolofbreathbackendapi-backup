@@ -1,5 +1,6 @@
 const controller = require("../controllers/courses.controller");
 const CoursesController = require("../controllers/upload_courses.controller");
+const couseProgressController = require("../controllers/course_progress.controller");
 const { Router } = require("express");
 const { authorize } = require("../utils/auth");
 
@@ -20,20 +21,22 @@ router.put("/order", CoursesController.updateCourseOrder);
 
 //GET
 
-router.get("/my-progress", controller.getAllUserCourseProgress);
-
-router.get("/:courseId", controller.getCourseProgress);
-
 router.post(
   "/:courseId/sections/:sectionId/lessons/:lessonId/complete",
   authorize(),
-  controller.markLessonAsCompleted
+  couseProgressController.markLessonAsCompleted
 );
 
 router.patch(
   "/:courseId/sections/:sectionId/lessons/:lessonId/progress",
   authorize(),
-  controller.updateLessonProgress
+  couseProgressController.updateLessonProgress
 );
+
+
+router.get("/my-progress",authorize(), couseProgressController.getAllUserCourseProgress);
+
+router.get("/:courseId", couseProgressController.getCourseProgress);
+
 
 module.exports = router;
