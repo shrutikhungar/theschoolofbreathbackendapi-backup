@@ -34,9 +34,11 @@ router.patch(
 );
 
 
-router.get("/my-progress",authorize(), couseProgressController.getAllUserCourseProgress);
+router.get("/my-progress",authorize(), couseProgressController.getCourseStatistics);
 
-router.get("/:courseId", couseProgressController.getCourseProgress);
+// router.get("/:courseId", couseProgressController.getCourseProgress);
+
+
 
 
 module.exports = router;
