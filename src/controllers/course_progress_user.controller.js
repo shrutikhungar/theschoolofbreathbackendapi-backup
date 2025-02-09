@@ -7,6 +7,8 @@ const Course = require("../models/courses.model");
 
 const fullAccessTags = ["Enrolled_Holistic Membership"];
 
+
+
 const User = require("../models/user.model");
 const limitedAccessRules = {
     Enrolled_to_Sleep_Membership: ["7"],
