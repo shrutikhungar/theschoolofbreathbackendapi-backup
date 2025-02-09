@@ -183,13 +183,14 @@ exports.getCourses = async (req, res) => {
               );
             }
             section.lessons.forEach(lesson => lesson.completed = false);
+            section.isCompleted = false; // Add section completion status
             return section;
           })
           .filter((section) => section.lessons.length > 0);
         return {
           ...processedCourse,
           hasAccess: false,
-          progress: 0, // Sin progreso
+          progress: 0,
         };
       });
 
@@ -198,7 +199,7 @@ exports.getCourses = async (req, res) => {
       });
     }
 
-    // Obtener etiquetas del usuario en Systeme.io
+    // Rest of your existing code...
     const response = await axios.get(
       `https://api.systeme.io/api/contacts?email=${userEmail}`,
       {
@@ -211,17 +212,14 @@ exports.getCourses = async (req, res) => {
     const contacts = response.data?.items[0] ?? null;
     const userTags = contacts ? contacts.tags.map((tag) => tag.name) : [];
 
-    // Obtener progreso del usuario en los cursos
     const user = await User.findOne({ email: userEmail });
     const userProgresses = user ? await CourseProgress.find({ userId: user._id }) : [];
 
-    // Mapear los progresos en un objeto para acceso rápido
     const progressMap = userProgresses.reduce((acc, progress) => {
       acc[progress.courseId] = progress;
       return acc;
     }, {});
 
-    // Procesar cursos con acceso y progreso
     const coursesWithAccess = courses.map((course) => {
       const hasFullAccess = userTags.some((tag) =>
         fullAccessTags.includes(tag)
@@ -234,21 +232,29 @@ exports.getCourses = async (req, res) => {
       const progressData = progressMap[course._id];
       const completionPercentage = progressData ? progressData.completionPercentage : 0;
 
-      // Marcar las lecciones como completadas o no
       courseObj.sections.forEach((section) => {
+        let allLessonsCompleted = true; // Track section completion
+
         section.lessons.forEach((lesson) => {
           if (progressData) {
             const sectionProgress = progressData.sectionsProgress.find(sp => sp.sectionId.toString() === section._id.toString());
             if (sectionProgress) {
               const lessonProgress = sectionProgress.lessonsProgress.find(lp => lp.lessonId.toString() === lesson._id.toString());
               lesson.completed = lessonProgress ? lessonProgress.completed : false;
+              if (!lesson.completed) {
+                allLessonsCompleted = false;
+              }
             } else {
               lesson.completed = false;
+              allLessonsCompleted = false;
             }
           } else {
             lesson.completed = false;
+            allLessonsCompleted = false;
           }
         });
+
+        section.isCompleted = allLessonsCompleted; // Add section completion status
       });
 
       if (hasFullAccess || hasSpecificAccess) {
@@ -265,6 +271,7 @@ exports.getCourses = async (req, res) => {
                 (lesson) => !lesson.isPremium
               );
             }
+            section.isCompleted = false; // Reset completion for non-accessible sections
             return section;
           })
           .filter((section) => section.lessons.length > 0);
