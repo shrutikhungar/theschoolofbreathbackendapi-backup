@@ -4,7 +4,7 @@ const CourseProgress = require('../models/userProgress.model');
 const axios = require("axios");
 
 const Course = require("../models/courses.model");
-// Access Rules
+
 const fullAccessTags = ["Enrolled_Holistic Membership"];
 
 const User = require("../models/user.model");
