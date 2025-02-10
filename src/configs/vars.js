@@ -1,7 +1,7 @@
 module.exports = {
     port: process.env.PORT || 8085,
     allowedOrigins: ["*"],
-    mongoUri: process.env.NODE_ENV == 'production' ? process.env.MONGO_URI : process.env.MONGO_URI,
+    mongoUri: process.env.NODE_ENV == 'production' ? process.env.MONGO_URI_DEV : process.env.MONGO_URI_DEV,
     jwtSecret: process.env.JWT_SECRET || '5up3r53cr3tk3y',
     resendKey: process.env.ROSSI_KEY,
     sendEmail: process.env.SEND_EMAIL,
