@@ -6,7 +6,6 @@ const fullAccessTagsForChakra = [
 
 const limitedAccessTagsChakra = [
   'Purchased_7-Chakra-Healing-Music',
-
 ]
 
 
