@@ -230,11 +230,12 @@ exports.getCourseSectionsAndLessons = async (req, res) => {
   exports.getCourses = async (req, res) => {
     try {
       const userEmail = req.query.email;
-      const courses = await Course.find().select('-sections').sort({ order: 1, createdAt: -1 });
-  
+      //const courses = await Course.find().select('-sections').sort({ order: 1, createdAt: -1 });
+      const courses = await Course.find().sort({ order: 1, createdAt: -1 });
       if (!userEmail) {
         const coursesWithLimitedAccess = courses.map((course) => {
           const processedCourse = course.toObject();
+          processedCourse.sections = [];
           return {
             ...processedCourse,
             hasAccess: false,
@@ -275,7 +276,7 @@ exports.getCourseSectionsAndLessons = async (req, res) => {
           userTags.includes(tag)
         );
         const courseObj = course.toObject();
-  
+        courseObj.sections = [];
         const progressData = progressMap[course._id];
         const completionPercentage = progressData ? progressData.completionPercentage : 0;
   
