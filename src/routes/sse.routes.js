@@ -29,14 +29,14 @@ router.get('/subscribe/:userEmail', (req, res) => {
     clients.delete(userEmail);
   });
 });
-router.post("/notify", (req, res) => {
+router.post("/notify", async (req, res) => {
     const { userEmail, tipo, idEntrevista } = req.body;
   console.log(userEmail, tipo, idEntrevista)
     if (!userEmail || !tipo || !idEntrevista) {
       return res.status(400).json({ error: "Missing required fields" });
     }
   
-    sendNotificationToUser(userEmail, {
+  await  sendNotificationToUser(userEmail, {
       tipo,
       mensaje: JSON.stringify({ idEntrevista }),
     });
