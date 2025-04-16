@@ -36,7 +36,10 @@ router.post("/notify", (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
   
-  
+    sendNotificationToUser(userEmail, {
+      tipo,
+      mensaje: JSON.stringify({ idEntrevista }),
+    });
     return res.status(200).json({ success: true, sentTo: userEmail });
   });
 /**
