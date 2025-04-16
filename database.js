@@ -6,7 +6,7 @@ if(process.env.NODE_ENV == 'development') {
     mongoose.set('debug', true)
 }
 
-mongoose.connect(process.env.MONGO_URI, {
+mongoose.connect(process.env.MONGO_URI_DEV, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
    
