@@ -9,23 +9,22 @@ const clients = new Map();
  * @route GET /eventos/subscribe/:userEmail
  */
 router.get('/subscribe/:userEmail', (req, res) => {
-  const userEmail = req.params.userEmail;
-  console.log(`📡 New SSE connection for ${userEmail}`);
+  const userEmail = req.params.email;
 
-  // Set headers for SSE
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
 
-  // Send a ping to keep the connection alive
-  res.write(`: ping\n\n`);
+  res.flushHeaders(); // required for streaming to start
 
-  // Save client connection
-  clients.set(userEmail, res);
+  console.log(`✅ Client connected: ${userEmail}`);
+  
+  clients.set(userEmail, res); // <--- this is important!
 
-  // Clean up on close
   req.on('close', () => {
-    console.log(`❌ Connection closed for ${userEmail}`);
+    console.log(`❌ Client disconnected: ${userEmail}`);
     clients.delete(userEmail);
   });
 });
@@ -50,7 +49,10 @@ router.post("/notify", async (req, res) => {
 function sendNotificationToUser(userEmail, data) {
   const res = clients.get(userEmail);
   if (res) {
+    console.log(`🔔 Sending to ${userEmail}:`, data);
     res.write(`data: ${JSON.stringify(data)}\n\n`);
+  } else {
+    console.warn(`⚠️ No active connection for ${userEmail}`);
   }
 }
 
