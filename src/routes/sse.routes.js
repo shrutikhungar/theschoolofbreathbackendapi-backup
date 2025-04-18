@@ -9,7 +9,7 @@ const clients = new Map();
  * @route GET /eventos/subscribe/:userEmail
  */
 router.get('/subscribe/:userEmail', (req, res) => {
-  const userEmail = req.params.email;
+  const userEmail = req.params.userEmail;
 
   res.set({
     'Content-Type': 'text/event-stream',
