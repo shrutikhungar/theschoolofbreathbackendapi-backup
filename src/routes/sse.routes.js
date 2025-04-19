@@ -29,7 +29,7 @@ router.get('/subscribe/:userEmail', (req, res) => {
   });
 });
 router.post("/notify", async (req, res) => {
-    const { userEmail, tipo } = req.body;
+    const { userEmail, tipo,feedback } = req.body;
 
     if (!userEmail ) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -37,7 +37,7 @@ router.post("/notify", async (req, res) => {
   
   await  sendNotificationToUser(userEmail, {
       tipo,
-      mensaje: JSON.stringify({ userEmail}),
+      mensaje: feedback,
     });
     return res.status(200).json({ success: true, sentTo: userEmail });
   });
