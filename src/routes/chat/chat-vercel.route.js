@@ -1,7 +1,7 @@
 const { Router } = require("express");
 const { authorize} = require("../../utils/auth");
 const { handleChat } = require("../../services/chatServiceVercel");
-const chatService = require('../../services/chatService Copy');
+const chatService = require('../../services/chatService');
 
 const router = Router();
 

@@ -7,7 +7,7 @@ let router = Router();
 router.route("/topics").get(controller.topics)
 
 // Get FAQ data by topic
-router.route("/faq/:topic").get(controller.getFaqByTopic)
+router.route("/faq/:category").get(controller.getFaqByTopic)
 
 // Chat endpoint
 router.route("/").post(authorize(), controller.chat)
@@ -20,4 +20,8 @@ router.route("/sessions").get(controller.getUserSessions)
 
 router.route("/analytics").get(controller.getAnalytics)
 
+// create listen questions
+router.route("/listen").post(authorize(), controller.listenQuestion)
+
 module.exports = router;
+

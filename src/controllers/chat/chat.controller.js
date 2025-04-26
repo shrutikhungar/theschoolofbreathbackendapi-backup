@@ -1,183 +1,222 @@
+const chatService = require('../../services/chatService');
+const Topic = require('../../models/topic.model');
+const FAQ = require('../../models/faq.model');
+const ListenQuestion = require('../../models/listenQuestion.model');
 
-const { 
-    getGeneralFAQs, 
-    getMembershipFAQs, 
-    getCourseFAQs, 
-    getAppFAQs, 
-    getTechnicalFAQs 
-  } = require('../../data/faqData');
-  const chatService = require('../../services/chatService');
 exports.topics = async (req, res, next) => {
     try {
-        const TOPICS = [
-            {
-              id: 1,
-              title: "General FAQs",
-              color: "#E8D1D1",
-            },
-            {
-              id: 2,
-              title: "Membership FAQs",
-              color: "#F2E8E8",
-            },
-            {
-              id: 3,
-              title: "Course FAQs",
-              color: "#D4B88C",
-            },
-            {
-              id: 4,
-              title: "App FAQs",
-              color: "#F5F1E6",
-            },
-            {
-              id: 5,
-              title: "Technical FAQs",
-              color: "#D3DCE1",
-            },
-            {
-              id: 6,
-              title: "Other Topics",
-              color: "#E8D1D1",
-            }
-          ];
-          
-          res.status(200).json(TOPICS);
-  
+        const TOPICS = await Topic.find().sort({ id: 1 });
+        res.status(200).json(TOPICS);
     } catch (error) {
-      return next(error);
+        return next(error);
     }
-  };
+};
 
-
-  // Get FAQ data by topic
-  exports.getFaqByTopic = async (req, res, next) => {
+// Get FAQ data by topic from MongoDB
+exports.getFaqByTopic = async (req, res, next) => {
     try {
-        const topic = req.params.topic;
-        let faqData = [];
-        
-        switch (topic) {
-          case 'general':
-            faqData = getGeneralFAQs();
-            break;
-          case 'membership':
-            faqData = getMembershipFAQs();
-            break;
-          case 'course':
-            faqData = getCourseFAQs();
-            break;
-          case 'app':
-            faqData = getAppFAQs();
-            break;
-          case 'technical':
-            faqData = getTechnicalFAQs();
-            break;
-          default:
-            return res.status(404).json({ error: 'Topic not found' });
+        const category = req.params.category;
+      
+        // Validate the category exists in our Topic collection
+      
+        const topicExists = await Topic.findOne({ category: category });
+        if (!topicExists) {
+            return res.status(404).json({ error: 'Category not found' });
         }
+
+        // Get FAQs from MongoDB
+        const faqData = await FAQ.find({ category: category }).sort({ createdAt: -1 });
         
         res.status(200).json(faqData);
     } catch (error) {
-      return next(error);
+        return next(error);
     }
-  };
+};
 
-  // Chat endpoint - Process user questions with MongoDB integration
-  exports.chat = async (req, res, next) => {
+// Chat endpoint - Process user questions with FAQ integration
+exports.chat = async (req, res, next) => {
     try {
         const { message, userId, sessionId } = req.body;
-  
+
         if (!message || !message.trim()) {
-          return res.status(400).json({ error: 'Message is required' });
+            return res.status(400).json({ error: 'Message is required' });
         }
-        
-      
-          // Extract useful metadata from the request
-          const metadata = {
+
+        // First check if this is a FAQ question
+        const matchedFAQ = await FAQ.findOne({
+            $or: [
+                { question: { $regex: message, $options: 'i' } },
+                { answer: { $regex: message, $options: 'i' } }
+            ]
+        }).sort({ updatedAt: -1 });
+
+        if (matchedFAQ) {
+            return res.status(200).json({
+                response: {
+                    text: matchedFAQ.answer,
+                    source: 'faq',
+                    faqId: matchedFAQ._id,
+                    category: matchedFAQ.category
+                },
+                sessionId: sessionId || `faq-${Date.now()}`
+            });
+        }
+
+        // If not a FAQ, proceed with normal chat processing
+        const metadata = {
             ...req.metadata,
             platform: req.get('platform') || 'unknown',
             deviceType: req.get('device-type') || 'unknown'
-          };
-          
-          // Process message and store in MongoDB
-          const result = await chatService.processMessage(
+        };
+
+        const result = await chatService.processMessage(
             message, 
             userId, 
             sessionId,
             metadata
-          );
-          
-          res.status(200).json({
+        );
+
+        res.status(200).json({
             ...result.response,
             sessionId: result.sessionId
-          });
-      
-    } catch (error) {
-      return next(error);
-    }
-  };
+        });
 
-  // Get conversation history
-  exports.getConversationHistory = async (req, res, next) => {
+    } catch (error) {
+        return next(error);
+    }
+};
+
+// Get conversation history
+exports.getConversationHistory = async (req, res, next) => {
     try {
         const { sessionId } = req.params;
         const { userId, limit } = req.query;
-        
+
         if (!sessionId) {
-          return res.status(400).json({ error: 'Session ID is required' });
+            return res.status(400).json({ error: 'Session ID is required' });
         }
-        
-       
-          const history = await chatService.getConversationHistory(
+
+        const history = await chatService.getConversationHistory(
             sessionId,
             userId || null,
             limit ? parseInt(limit) : 50
-          );
-          
-          res.status(200).json(history);
-       
-    } catch (error) {
-      return next(error);
-    }
-  };
+        );
 
-  // Get user sessions
-  exports.getUserSessions = async (req, res, next) => {
+        res.status(200).json(history);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+// Get user sessions
+exports.getUserSessions = async (req, res, next) => {
     try {
         const { userId, activeOnly } = req.query;
-  
+
         if (!userId) {
-          return res.status(400).json({ error: 'User ID is required' });
+            return res.status(400).json({ error: 'User ID is required' });
         }
-      
-          const sessions = await chatService.getUserSessions(
+
+        const sessions = await chatService.getUserSessions(
             userId,
             activeOnly === 'true'
-          );
-          
-          res.status(200).json(sessions);
-       
+        );
+
+        res.status(200).json(sessions);
     } catch (error) {
-      return next(error);
+        return next(error);
     }
-  };
-  
+};
+
 // Get analytics
 exports.getAnalytics = async (req, res, next) => {
     const { userId } = req.query;
-  
+
     try {
-      const analytics = await chatService.getAnalytics(userId || null);
-      res.status(200).json(analytics);
+        // Get both chat analytics and FAQ analytics
+        const chatAnalytics = await chatService.getAnalytics(userId || null);
+        
+        // Add FAQ-specific analytics
+        const faqAnalytics = {
+            totalFAQs: await FAQ.countDocuments(),
+            byCategory: await FAQ.aggregate([
+                { $group: { _id: "$category", count: { $sum: 1 } } }
+            ]),
+            mostViewed: await FAQ.find().sort({ views: -1 }).limit(5)
+        };
+
+        res.status(200).json({
+            ...chatAnalytics,
+            faqAnalytics
+        });
     } catch (error) {
-      console.error('Error retrieving analytics:', error);
-      res.status(500).json({ error: 'Failed to retrieve analytics' });
+        console.error('Error retrieving analytics:', error);
+        res.status(500).json({ error: 'Failed to retrieve analytics' });
+    }
+};
+
+
+exports.listenQuestion = async (req, res, next) => {
+    try {
+
+        const { faqId } = req.body;
+        const { _id } = req.user;
+        
+        if (!_id || !faqId) {
+            return res.status(400).json({ error: 'User ID and FAQ ID are required' });
+        }
+        
+        // Create or update the listen question record
+        const listenQuestion = await ListenQuestion.findOneAndUpdate(
+            { userId: _id, faqId },
+            { $inc: { count: 1 } },
+            { upsert: true, new: true }
+        );
+        
+        res.status(200).json({
+            success: true,
+            message: 'Listen question recorded successfully',
+            data: listenQuestion
+        });
+    } catch (error) {
+        return next(error);
     }
 };
 
 
 
-  
-  
 
+// Seed FAQs from the static data (one-time operation)
+exports.seedFAQs = async (req, res, next) => {
+    try {
+        const { 
+            getGeneralFAQs, 
+            getMembershipFAQs, 
+            getCourseFAQs, 
+            getAppFAQs, 
+            getTechnicalFAQs 
+        } = require('../../data/faqData');
 
+        // Delete existing FAQs
+        await FAQ.deleteMany({});
+
+        // Prepare FAQ data with categories
+        const faqsToInsert = [
+            ...getGeneralFAQs().map(faq => ({ ...faq, category: 'general' })),
+            ...getMembershipFAQs().map(faq => ({ ...faq, category: 'membership' })),
+            ...getCourseFAQs().map(faq => ({ ...faq, category: 'course' })),
+            ...getAppFAQs().map(faq => ({ ...faq, category: 'app' })),
+            ...getTechnicalFAQs().map(faq => ({ ...faq, category: 'technical' }))
+        ];
+
+        // Insert all FAQs
+        const result = await FAQ.insertMany(faqsToInsert);
+
+        res.status(200).json({
+            message: 'FAQs seeded successfully',
+            count: result.length
+        });
+    } catch (error) {
+        return next(error);
+    }
+};
