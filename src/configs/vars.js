@@ -14,5 +14,6 @@ module.exports = {
     STRIPE:{
         secret: process.env.STRIPE_SECRET_KEY,
         webhookSecret: process.env.WEB_HOOK_KEY
-    }
+    },
+    GROQ_API_KEY: process.env.GROQ_API_KEY
 }

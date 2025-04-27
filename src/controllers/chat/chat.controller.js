@@ -36,33 +36,15 @@ exports.getFaqByTopic = async (req, res, next) => {
 // Chat endpoint - Process user questions with FAQ integration
 exports.chat = async (req, res, next) => {
     try {
-        const { message, userId, sessionId } = req.body;
+        const { message, userId, userEmail, sessionId } = req.body;
 
         if (!message || !message.trim()) {
             return res.status(400).json({ error: 'Message is required' });
         }
 
-        // First check if this is a FAQ question
-        const matchedFAQ = await FAQ.findOne({
-            $or: [
-                { question: { $regex: message, $options: 'i' } },
-                { answer: { $regex: message, $options: 'i' } }
-            ]
-        }).sort({ updatedAt: -1 });
+        // Determine user identifier - prefer userId if available, otherwise use userEmail
+        const userIdentifier = userId || userEmail;
 
-        if (matchedFAQ) {
-            return res.status(200).json({
-                response: {
-                    text: matchedFAQ.answer,
-                    source: 'faq',
-                    faqId: matchedFAQ._id,
-                    category: matchedFAQ.category
-                },
-                sessionId: sessionId || `faq-${Date.now()}`
-            });
-        }
-
-        // If not a FAQ, proceed with normal chat processing
         const metadata = {
             ...req.metadata,
             platform: req.get('platform') || 'unknown',
@@ -71,7 +53,7 @@ exports.chat = async (req, res, next) => {
 
         const result = await chatService.processMessage(
             message, 
-            userId, 
+            userIdentifier, 
             sessionId,
             metadata
         );
@@ -90,15 +72,18 @@ exports.chat = async (req, res, next) => {
 exports.getConversationHistory = async (req, res, next) => {
     try {
         const { sessionId } = req.params;
-        const { userId, limit } = req.query;
+        const { userId, userEmail, limit } = req.query;
 
         if (!sessionId) {
             return res.status(400).json({ error: 'Session ID is required' });
         }
 
+        // Determine user identifier - prefer userId if available, otherwise use userEmail
+        const userIdentifier = userId || userEmail;
+
         const history = await chatService.getConversationHistory(
             sessionId,
-            userId || null,
+            userIdentifier || null,
             limit ? parseInt(limit) : 50
         );
 
@@ -111,14 +96,17 @@ exports.getConversationHistory = async (req, res, next) => {
 // Get user sessions
 exports.getUserSessions = async (req, res, next) => {
     try {
-        const { userId, activeOnly } = req.query;
+        const { userId, userEmail, activeOnly } = req.query;
 
-        if (!userId) {
-            return res.status(400).json({ error: 'User ID is required' });
+        // Determine user identifier - prefer userId if available, otherwise use userEmail
+        const userIdentifier = userId || userEmail;
+
+        if (!userIdentifier) {
+            return res.status(400).json({ error: 'User ID or Email is required' });
         }
 
         const sessions = await chatService.getUserSessions(
-            userId,
+            userIdentifier,
             activeOnly === 'true'
         );
 

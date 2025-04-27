@@ -1,26 +1,47 @@
-// utils/qaHandler.js - Updated with MongoDB integration
+// utils/qaHandler.js - Updated with MongoDB integration and Groq API
 const Fuse = require('fuse.js');
 const axios = require('axios');
 const FAQ = require('../models/faq.model');
+const { GROQ_API_KEY } = require('../configs/vars');
+const Course = require('../models/courses.model');
+// Function to search the knowledge base using Fuse.js
+function searchKnowledgeBase(entries, query) {
+  const options = {
+    keys: ['question', 'answer', 'keywords'],
+    includeScore: true,
+    threshold: 0.4, // Adjust threshold for fuzziness (0.0 = exact match, 1.0 = match anything)
+  };
+  const fuse = new Fuse(entries, options);
+  const results = fuse.search(query);
+  
+  if (results.length > 0) {
+    // Return the raw Fuse results (up to 3)
+    return results.slice(0, 3);
+  } else {
+    return [];
+  }
+}
 
 // Main handler function for user questions
 async function handleUserQuestion(query) {
+  // Check for greetings
+  const greetingKeywords = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"];
+  const lowerCaseQuery = query.toLowerCase().trim();
+  if (greetingKeywords.includes(lowerCaseQuery)) {
+    const greetings = ["Hello there! How can I help you today?", "Hi! What's on your mind?", "Hey! Ask me anything about The School of Breath."];
+    return {
+      answer: greetings[Math.floor(Math.random() * greetings.length)],
+      backgroundColor: "#E8D1D1",
+      source: 'greeting'
+    };
+  }
+
   try {
     // First try to find an answer in MongoDB knowledge base
     const allFAQs = await FAQ.find({}).lean(); // Get all FAQs from MongoDB
     
-    // Configure Fuse.js for fuzzy search
-    const fuseOptions = {
-      keys: ['question', 'answer'], // Search both questions and answers
-      threshold: 0.4,
-      includeScore: true,
-      minMatchCharLength: 3,
-      ignoreLocation: true,
-      shouldSort: true
-    };
-    
-    const fuse = new Fuse(allFAQs, fuseOptions);
-    const results = fuse.search(query);
+    // Use the searchKnowledgeBase function
+    const results = searchKnowledgeBase(allFAQs, query);
     
     // Return the best match if it exists and has a good score
     if (results.length > 0 && results[0].score < 0.4) {
@@ -39,12 +60,12 @@ async function handleUserQuestion(query) {
       };
     }
     
-    // If no local match found, use OpenAI
-    const openAIResponse = await getOpenAIResponse(query);
+    // If no local match found, use Groq
+    const groqResponse = await getGroqResponse(query);
     return {
-      answer: openAIResponse,
+      answer: groqResponse,
       backgroundColor: "#E8D1D1", // Default background color for AI responses
-      source: 'openai', // Indicates answer came from OpenAI
+      source: 'groq', // Indicates answer came from Groq
       isFallback: true // Flag to indicate this was a fallback response
     };
   } catch (error) {
@@ -57,57 +78,89 @@ async function handleUserQuestion(query) {
   }
 }
 
-// Enhanced OpenAI response function with context from FAQs
-async function getOpenAIResponse(query) {
+// Function to get answer from Groq (replacing OpenAI)
+async function getGroqResponse(query) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Get API key from environment
+    const apiKey = GROQ_API_KEY;
     
     if (!apiKey) {
-      console.error('OpenAI API key not found');
+      console.error('Groq API key not found');
       return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try asking your question in a different way or try again later.";
     }
     
-    // Get relevant FAQs to provide as context to OpenAI
+    // Get relevant FAQs to provide as context to Groq
     const contextFAQs = await FAQ.find({
       $or: [
         { question: { $regex: query, $options: 'i' } },
         { answer: { $regex: query, $options: 'i' } }
       ]
-    }).limit(3).lean();
+    }).limit(10).lean();
+
+    // get courses showing just title and description
+    const courses = await Course.find().limit(10).lean(); 
     
     const context = contextFAQs.map(faq => 
       `Q: ${faq.question}\nA: ${faq.answer}`
     ).join('\n\n');
-    
-    const messages = [
-      {
-        role: "system",
-        content: `You are Abhi, a 43-year-old mental health expert and founder of Meditate with Abhi and The School of Breath. 
-        You blend ancient yogic wisdom with modern neuroscience. Keep responses concise, warm, and focused on meditation, 
-        breathwork, and wellness. Here's some relevant context from our knowledge base:
-        ${context}`
-      },
-      {
-        role: "user",
-        content: query
-      }
-    ];
-    
-    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: "gpt-3.5-turbo",
-      messages: messages,
-      max_tokens: 500,
-      temperature: 0.7
-    }, {
+    const contextCourses = courses.map(course => 
+      `- ${course.title}: ${course.description}`
+    ).join('\n');
+   
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
-      }
+      },
+      body: JSON.stringify({
+        model: "llama3-70b-8192",
+        messages: [
+          {
+            role: 'system',
+            content: `
+          You are Abhi, a 43-year-old mental health expert and founder of Meditate with Abhi and The School of Breath.
+          You blend ancient yogic wisdom with modern neuroscience.
+          
+          Follow these strict rules:
+          - ONLY use the provided context to answer the user.
+          - DO NOT invent any information not present in the context.
+          - If the user asks about courses, use ONLY the course list provided.
+          - If no relevant course is found, say: "I'm sorry, I couldn't find any course matching your request."
+        
+
+          Here is the GENERAL CONTEXT:
+          ${context}
+               Here is the LIST OF COURSES:
+          ${contextCourses}
+       
+          `
+          },
+          {
+            role: "user",
+            content: query
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.1
+      })
     });
     
-    return response.data.choices[0].message.content.trim();
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Groq API error:', errorData);
+      return "I apologize, but I'm having trouble processing your question right now. Please try again later.";
+    }
+
+    const data = await response.json();
+    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+      return data.choices[0].message.content.trim();
+    } else {
+      console.error('Groq API response format error or empty content:', data);
+      return "I apologize, but I received an unexpected response. Please try again.";
+    }
   } catch (error) {
-    console.error('Error getting OpenAI response:', error);
+    console.error('Error getting Groq response:', error);
     return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try asking your question in a different way or try again later.";
   }
 }
@@ -123,8 +176,15 @@ async function logUnansweredQuestion(question, userId = null) {
   }
 }
 
+// Function to check if the response is pending
+function isResponsePending(response) {
+  return response === null;
+}
+
 module.exports = {
   handleUserQuestion,
-  getOpenAIResponse,
-  logUnansweredQuestion
+  getGroqResponse,
+  logUnansweredQuestion,
+  isResponsePending,
+  searchKnowledgeBase
 };
