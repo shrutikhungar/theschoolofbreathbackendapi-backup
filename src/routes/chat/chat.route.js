@@ -10,7 +10,7 @@ router.route("/topics").get(controller.topics)
 router.route("/faq/:category").get(controller.getFaqByTopic)
 
 // Chat endpoint
-router.route("/").post(authorize(), controller.chat)
+router.route("/").post(controller.chat)
 
 // Get conversation history
 router.route("/history/:sessionId").get(controller.getConversationHistory)

@@ -22,12 +22,7 @@ router.post('/chat', async (req, res,next) => {
           };
           
           // Process message and store in MongoDB
-          const result = await chatService.processMessage(
-            message, 
-            userId, 
-            sessionId,
-            metadata
-          );
+          const result = await handleChat({ userId, prompt: message, sessionId, metadata });
           
           res.status(200).json({
             ...result.response,
