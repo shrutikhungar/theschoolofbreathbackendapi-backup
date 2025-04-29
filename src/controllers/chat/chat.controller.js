@@ -148,9 +148,9 @@ exports.listenQuestion = async (req, res, next) => {
     try {
 
         const { faqId } = req.body;
-        const { _id } = req.user;
+        const { userEmail } = req.query;
         
-        if (!_id || !faqId) {
+        if (!userEmail) {
             return res.status(400).json({ error: 'User ID and FAQ ID are required' });
         }
         
