@@ -156,7 +156,7 @@ exports.listenQuestion = async (req, res, next) => {
         
         // Create or update the listen question record
         const listenQuestion = await ListenQuestion.findOneAndUpdate(
-            { userId: _id, faqId },
+            { userId: userEmail , faqId },
             { $inc: { count: 1 } },
             { upsert: true, new: true }
         );
