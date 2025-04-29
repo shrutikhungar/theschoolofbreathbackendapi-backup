@@ -21,7 +21,7 @@ router.route("/sessions").get(controller.getUserSessions)
 router.route("/analytics").get(controller.getAnalytics)
 
 // create listen questions
-router.route("/listen").post(authorize(), controller.listenQuestion)
+router.route("/listen").post(controller.listenQuestion)
 
 module.exports = router;
 
