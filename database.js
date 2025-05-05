@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-
+// docs
 
 if(process.env.NODE_ENV == 'development') {
     mongoose.set('debug', true)
