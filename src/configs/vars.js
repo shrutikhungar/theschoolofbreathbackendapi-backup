@@ -1,3 +1,4 @@
+//TODO: cambiar a variables de entorno
 module.exports = {
     port: process.env.PORT || 8085,
     allowedOrigins: ["*"],
