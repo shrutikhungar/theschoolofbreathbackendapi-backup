@@ -1,3 +1,4 @@
+//TODO: cambiar a variables de entorno
 module.exports = {
     port: process.env.PORT || 8085,
     allowedOrigins: ["*"],
@@ -14,5 +15,6 @@ module.exports = {
     STRIPE:{
         secret: process.env.STRIPE_SECRET_KEY,
         webhookSecret: process.env.WEB_HOOK_KEY
-    }
+    },
+    GROQ_API_KEY: process.env.GROQ_API_KEY
 }

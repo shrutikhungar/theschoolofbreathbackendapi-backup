@@ -164,6 +164,7 @@ exports.changePassword = async (req, res, next) => {
 
 // Function to generate a password reset token
 exports.generateResetToken = async (req, res, next) => {
+ try {
   const userEmail = req.body.email;
   const user = await User.findOne({ email: userEmail });
 
@@ -186,7 +187,7 @@ exports.generateResetToken = async (req, res, next) => {
     secure: true, // upgrade later with STARTTLS
     auth: {
       user: "theschoolofbreathai@gmail.com",
-      pass: "hbew ydyt twrj wnkv",
+      pass: "gepo slfp eljw odcz",
     },
   });
 
@@ -204,6 +205,9 @@ exports.generateResetToken = async (req, res, next) => {
       }
       res.status(200).json({ message: 'Email sent' });
   });
+ } catch (error) {
+  console.log(error);
+ }
 };
 
 exports.resetPassword = async (req, res, next) => {
