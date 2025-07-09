@@ -60,7 +60,7 @@ exports.getGuidedMeditationMusicByCategory = async (req, res, next) => {
   
       // Optional: Add pagination
       const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
+      const limit = parseInt(req.query.limit) || 20;
       const startIndex = (page - 1) * limit;
       const endIndex = page * limit;
   
