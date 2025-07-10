@@ -16,5 +16,12 @@ module.exports = {
         secret: process.env.STRIPE_SECRET_KEY,
         webhookSecret: process.env.WEB_HOOK_KEY
     },
-    GROQ_API_KEY: process.env.GROQ_API_KEY
+    GROQ_API_KEY: process.env.GROQ_API_KEY,
+    SMTP: {
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: process.env.SMTP_PORT || 587,
+        secure: process.env.SMTP_SECURE === 'true' || false,
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
 }

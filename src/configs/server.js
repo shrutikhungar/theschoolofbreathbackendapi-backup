@@ -22,6 +22,7 @@ const videoContent = require('../routes/video.content.routes')
 const { router: sseRoutes } = require('../routes/sse.routes')
 const chatRoutes = require('../routes/chat/chat.route')
 const chatVercelRoutes = require('../routes/chat/chat-vercel.route')
+const emailRoutes = require('../routes/email.routes')
 const app = express()
 // Enable CORS for all routes
 app.use(cors({origin:'*'}))
@@ -59,4 +60,5 @@ app.use('/video-content',videoContent)
 app.use('/eventos', sseRoutes)
 app.use('/chat', chatRoutes)
 app.use('/chat-vercel', chatVercelRoutes)
+app.use('/email', emailRoutes)
 module.exports = app
