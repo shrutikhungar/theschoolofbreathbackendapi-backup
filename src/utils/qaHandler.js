@@ -4,6 +4,8 @@ const axios = require('axios');
 const FAQ = require('../models/faq.model');
 const { GROQ_API_KEY } = require('../configs/vars');
 const Course = require('../models/courses.model');
+const guideService = require('../services/guideService');
+
 // Function to search the knowledge base using Fuse.js
 function searchKnowledgeBase(entries, query) {
   const options = {
@@ -23,7 +25,7 @@ function searchKnowledgeBase(entries, query) {
 }
 
 // Main handler function for user questions
-async function handleUserQuestion(query) {
+async function handleUserQuestion(query, selectedGuide = 'abhi') {
   // Check for greetings
   const greetingKeywords = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"];
   const lowerCaseQuery = query.toLowerCase().trim();
@@ -60,8 +62,8 @@ async function handleUserQuestion(query) {
       };
     }
     
-    // If no local match found, use Groq
-    const groqResponse = await getGroqResponse(query);
+    // If no local match found, use Groq with guide-specific personality
+    const groqResponse = await getGroqResponse(query, selectedGuide);
     return {
       answer: groqResponse,
       backgroundColor: "#E8D1D1", // Default background color for AI responses
@@ -78,8 +80,8 @@ async function handleUserQuestion(query) {
   }
 }
 
-// Function to get answer from Groq (replacing OpenAI)
-async function getGroqResponse(query) {
+// Function to get answer from Groq (replacing OpenAI) with guide-specific personality
+async function getGroqResponse(query, selectedGuide = 'abhi') {
   try {
     // Get API key from environment
     const apiKey = GROQ_API_KEY;
@@ -88,6 +90,9 @@ async function getGroqResponse(query) {
       console.error('Groq API key not found');
       return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try asking your question in a different way or try again later.";
     }
+    
+    // Get guide-specific system prompt
+    const systemPrompt = await guideService.getGuideSystemPrompt(selectedGuide);
     
     // Get relevant FAQs to provide as context to Groq
     const contextFAQs = await FAQ.find({
@@ -118,23 +123,20 @@ async function getGroqResponse(query) {
         messages: [
           {
             role: 'system',
-            content: `
-          You are Abhi, a 43-year-old mental health expert and founder of Meditate with Abhi and The School of Breath.
-          You blend ancient yogic wisdom with modern neuroscience.
-          
-          Follow these strict rules:
-          - ONLY use the provided context to answer the user.
-          - DO NOT invent any information not present in the context.
-          - If the user asks about courses, use ONLY the course list provided.
-          - If no relevant course is found, say: "I'm sorry, I couldn't find any course matching your request."
-        
+            content: `${systemPrompt}
 
-          Here is the GENERAL CONTEXT:
-          ${context}
-               Here is the LIST OF COURSES:
-          ${contextCourses}
-       
-          `
+Follow these strict rules:
+- ONLY use the provided context to answer the user.
+- DO NOT invent any information not present in the context.
+- If the user asks about courses, use ONLY the course list provided.
+- If no relevant course is found, say: "I'm sorry, I couldn't find any course matching your request."
+
+Here is the GENERAL CONTEXT:
+${context}
+
+Here is the LIST OF COURSES:
+${contextCourses}
+`
           },
           {
             role: "user",

@@ -33,10 +33,10 @@ exports.getFaqByTopic = async (req, res, next) => {
     }
 };
 
-// Chat endpoint - Process user questions with FAQ integration
+// Chat endpoint - Process user questions with FAQ integration and guide support
 exports.chat = async (req, res, next) => {
     try {
-        const { message, userId, userEmail, sessionId } = req.body;
+        const { message, userId, userEmail, sessionId, selectedGuide } = req.body;
 
         if (!message || !message.trim()) {
             return res.status(400).json({ error: 'Message is required' });
@@ -44,6 +44,9 @@ exports.chat = async (req, res, next) => {
 
         // Determine user identifier - prefer userId if available, otherwise use userEmail
         const userIdentifier = userId || userEmail;
+
+        // Use selected guide or default to 'abhi'
+        const guideId = selectedGuide || 'abhi';
 
         const metadata = {
             ...req.metadata,
@@ -55,12 +58,14 @@ exports.chat = async (req, res, next) => {
             message, 
             userIdentifier, 
             sessionId,
-            metadata
+            metadata,
+            guideId
         );
 
         res.status(200).json({
             ...result.response,
-            sessionId: result.sessionId
+            sessionId: result.sessionId,
+            selectedGuide: result.selectedGuide
         });
 
     } catch (error) {
@@ -112,6 +117,25 @@ exports.getUserSessions = async (req, res, next) => {
 
         res.status(200).json(sessions);
     } catch (error) {
+        return next(error);
+    }
+};
+
+// Get session guide information
+exports.getSessionGuideInfo = async (req, res, next) => {
+    try {
+        const { sessionId } = req.params;
+
+        if (!sessionId) {
+            return res.status(400).json({ error: 'Session ID is required' });
+        }
+
+        const guideInfo = await chatService.getSessionGuideInfo(sessionId);
+        res.status(200).json(guideInfo);
+    } catch (error) {
+        if (error.message === 'Session not found') {
+            return res.status(404).json({ error: 'Session not found' });
+        }
         return next(error);
     }
 };

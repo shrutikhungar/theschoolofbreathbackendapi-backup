@@ -2,6 +2,7 @@
 const ChatHistory = require('../models/chat.model');
 const { v4: uuidv4 } = require('uuid');
 const { handleUserQuestion } = require('../utils/qaHandler');
+const guideService = require('./guideService');
 
 class ChatService {
   /**
@@ -10,21 +11,23 @@ class ChatService {
    * @param {string} userIdentifier - The user ID or email (optional for anonymous users)
    * @param {string} sessionId - The session ID (will be created if not provided)
    * @param {object} metadata - Additional metadata about the request
+   * @param {string} selectedGuide - The selected guide ID (abhi or ganesha)
    * @returns {object} - The response and session information
    */
-  async processMessage(message, userIdentifier = null, sessionId = null, metadata = {}) {
+  async processMessage(message, userIdentifier = null, sessionId = null, metadata = {}, selectedGuide = 'abhi') {
     // Create or use provided session ID
     const currentSessionId = sessionId || uuidv4();
     
     try {
       // Get or create the chat history for this session
-      const chatHistory = await ChatHistory.findOrCreateSession(userIdentifier, currentSessionId);
+      const chatHistory = await ChatHistory.findOrCreateSession(userIdentifier, currentSessionId, selectedGuide);
       
       // Update metadata if provided
       if (Object.keys(metadata).length > 0) {
         chatHistory.metadata = {
           ...chatHistory.metadata,
           ...metadata,
+          selectedGuide: selectedGuide,
           lastActive: new Date()
         };
         await chatHistory.save();
@@ -39,8 +42,8 @@ class ChatService {
       };
       await chatHistory.addMessage(userMessage);
       
-      // Process the user's question
-      const botResponse = await handleUserQuestion(message);
+      // Process the user's question with guide-specific personality
+      const botResponse = await handleUserQuestion(message, selectedGuide);
       
       // Map the source to a valid enum value
       // The valid enum values are: 'local', 'openai', 'user'
@@ -72,7 +75,8 @@ class ChatService {
           hasAudio: true,
           backgroundColor: botResponse.backgroundColor
         },
-        isNewSession: !sessionId // Flag if this was a new session
+        isNewSession: !sessionId, // Flag if this was a new session
+        selectedGuide: selectedGuide // Include selected guide in response
       };
     } catch (error) {
       console.error('Error processing message:', error);
@@ -130,7 +134,8 @@ class ChatService {
   async getAnalytics(userIdentifier = null) {
     try {
       const analytics = {
-        topQuestions: await ChatHistory.getTopQuestions(10)
+        topQuestions: await ChatHistory.getTopQuestions(10),
+        guideAnalytics: await ChatHistory.getGuideAnalytics()
       };
       
       // If userIdentifier is provided, get user-specific stats
@@ -154,6 +159,39 @@ class ChatService {
       return analytics;
     } catch (error) {
       console.error('Error generating analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get guide information for a session
+   * @param {string} sessionId - The session ID
+   * @returns {object} - Guide information and resources
+   */
+  async getSessionGuideInfo(sessionId) {
+    try {
+      const chatHistory = await ChatHistory.findOne({ sessionId });
+      if (!chatHistory) {
+        throw new Error('Session not found');
+      }
+
+      const selectedGuide = chatHistory.metadata?.selectedGuide || 'abhi';
+      const guideInfo = await guideService.getGuideById(selectedGuide);
+      const guideResources = await guideService.getGuideResources(selectedGuide);
+
+      return {
+        selectedGuide: selectedGuide,
+        guideInfo: {
+          id: guideInfo.id,
+          name: guideInfo.name,
+          subtitle: guideInfo.subtitle,
+          avatarUrl: guideInfo.avatarUrl,
+          personality: guideInfo.personality
+        },
+        resources: guideResources.resources
+      };
+    } catch (error) {
+      console.error('Error getting session guide info:', error);
       throw error;
     }
   }
