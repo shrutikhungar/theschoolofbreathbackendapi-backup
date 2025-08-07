@@ -83,7 +83,7 @@ async function getGroqResponse(query) {
   try {
     // Get API key from environment
     const apiKey = GROQ_API_KEY;
-    
+    console.log(apiKey);
     if (!apiKey) {
       console.error('Groq API key not found');
       return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try asking your question in a different way or try again later.";
