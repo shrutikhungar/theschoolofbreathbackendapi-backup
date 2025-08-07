@@ -81,7 +81,8 @@ const courseSchema = new mongoose.Schema({
       'Purchased_Swara_Yoga_Course',
       'Purchased_9-Day Bliss Course',
       'Purchased_12-Day ThirdEye Course',
-      'Purchased_Kundalini Course'
+      'Purchased_Kundalini Course',
+      'Purchased_Decision_Making_Course'
     ]
   }]
 }, {
