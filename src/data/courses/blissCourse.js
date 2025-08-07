@@ -1,4 +1,5 @@
 exports.BLISS_COURSE = {
+  
   id: "1",
   title: "9-Day Breathwork for Unconditional Bliss",
   description: "COMING IN AUGUST",
