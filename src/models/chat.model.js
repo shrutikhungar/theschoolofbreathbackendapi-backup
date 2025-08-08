@@ -48,6 +48,15 @@ const chatHistorySchema = new mongoose.Schema({
     ipAddress: String,
     platform: String,
     deviceType: String,
+    selectedGuide: {
+      type: String,
+      enum: ['abhi', 'ganesha'],
+      default: 'abhi'
+    },
+    guidePersonality: {
+      type: String,
+      default: 'modern'
+    },
     lastActive: { 
       type: Date, 
       default: Date.now 
@@ -90,6 +99,13 @@ chatHistorySchema.methods = {
   // Get the last N messages
   getRecentMessages: function(limit = 10) {
     return this.messages.slice(-limit);
+  },
+
+  // Update guide selection
+  updateGuide: function(guideId) {
+    this.metadata.selectedGuide = guideId;
+    this.updatedAt = Date.now();
+    return this.save();
   }
 };
 
@@ -107,14 +123,17 @@ chatHistorySchema.statics = {
   },
 
   // Find or create a session
-  findOrCreateSession: async function(userId, sessionId) {
+  findOrCreateSession: async function(userId, sessionId, selectedGuide = 'abhi') {
     let session = await this.findOne({ userId, sessionId });
     
     if (!session) {
       session = new this({
         userId,
         sessionId,
-        messages: []
+        messages: [],
+        metadata: {
+          selectedGuide: selectedGuide
+        }
       });
       await session.save();
     }
@@ -133,6 +152,18 @@ chatHistorySchema.statics = {
       }},
       { $sort: { count: -1 } },
       { $limit: limit }
+    ]);
+  },
+
+  // Get guide analytics
+  getGuideAnalytics: async function() {
+    return this.aggregate([
+      { $group: { 
+        _id: "$metadata.selectedGuide", 
+        count: { $sum: 1 },
+        totalMessages: { $sum: { $size: "$messages" } }
+      }},
+      { $sort: { count: -1 } }
     ]);
   }
 };
