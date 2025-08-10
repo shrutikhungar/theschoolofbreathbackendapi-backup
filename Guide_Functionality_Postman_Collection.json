@@ -1,0 +1,243 @@
+{
+	"info": {
+		"_postman_id": "guide-functionality-collection",
+		"name": "Guide Functionality API",
+		"description": "Complete collection for testing Guide Selection Functionality endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get All Guides",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/guides",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"guides"
+					]
+				},
+				"description": "Get all active guides available in the system"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Guide by ID - Abhi",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/guides/abhi",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"guides",
+						"abhi"
+					]
+				},
+				"description": "Get specific guide information for Abhi (modern personality)"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Guide by ID - Ganesha",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/guides/ganesha",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"guides",
+						"ganesha"
+					]
+				},
+				"description": "Get specific guide information for Ganesha (ancient personality)"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Guide Resources - Abhi",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/guides/abhi/resources",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"guides",
+						"abhi",
+						"resources"
+					]
+				},
+				"description": "Get Abhi's GIF resources (welcome, typing, sent animations)"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Guide Resources - Ganesha",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/guides/ganesha/resources",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"guides",
+						"ganesha",
+						"resources"
+					]
+				},
+				"description": "Get Ganesha's GIF resources (welcome, typing, sent animations)"
+			},
+			"response": []
+		},
+		{
+			"name": "Select Guide for Session",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"guideId\": \"abhi\",\n  \"sessionId\": \"session-123\",\n  \"userEmail\": \"user@example.com\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/guides/select",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"guides",
+						"select"
+					]
+				},
+				"description": "Select a guide for a specific chat session"
+			},
+			"response": []
+		},
+		{
+			"name": "Seed Default Guides",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/guides/seed",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"guides",
+						"seed"
+					]
+				},
+				"description": "Seed the database with default guides (Abhi and Ganesha)"
+			},
+			"response": []
+		},
+		{
+			"name": "Send Chat Message with Guide",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"message\": \"Hello, can you help me with meditation?\",\n  \"userEmail\": \"user@example.com\",\n  \"sessionId\": \"session-123\",\n  \"selectedGuide\": \"abhi\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/chat",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"chat"
+					]
+				},
+				"description": "Send a chat message with guide context"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Session Guide Info",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/chat/session/session-123/guide",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"chat",
+						"session",
+						"session-123",
+						"guide"
+					]
+				},
+				"description": "Get guide information for a specific chat session"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+} 

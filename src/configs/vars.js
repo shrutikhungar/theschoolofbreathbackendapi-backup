@@ -17,6 +17,8 @@ module.exports = {
         webhookSecret: process.env.WEB_HOOK_KEY
     },
     GROQ_API_KEY: process.env.GROQ_API_KEY,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    AI_PROVIDER: process.env.AI_PROVIDER || 'gemini',
     SMTP: {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: process.env.SMTP_PORT || 587,

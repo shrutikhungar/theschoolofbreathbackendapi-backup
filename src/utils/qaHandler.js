@@ -1,10 +1,10 @@
-// utils/qaHandler.js - Updated with MongoDB integration and Groq API
+// utils/qaHandler.js - Updated with MongoDB integration and Gemini API
 const Fuse = require('fuse.js');
 const axios = require('axios');
 const FAQ = require('../models/faq.model');
-const { GROQ_API_KEY } = require('../configs/vars');
 const Course = require('../models/courses.model');
 const guideService = require('../services/guideService');
+const aiService = require('../services/aiService');
 
 // Function to search the knowledge base using Fuse.js
 function searchKnowledgeBase(entries, query) {
@@ -62,14 +62,9 @@ async function handleUserQuestion(query, selectedGuide = 'abhi') {
       };
     }
     
-    // If no local match found, use Groq with guide-specific personality
-    const groqResponse = await getGroqResponse(query, selectedGuide);
-    return {
-      answer: groqResponse,
-      backgroundColor: "#E8D1D1", // Default background color for AI responses
-      source: 'groq', // Indicates answer came from Groq
-      isFallback: true // Flag to indicate this was a fallback response
-    };
+    // If no local match found, use Gemini with guide-specific personality
+    const geminiResponse = await getGeminiResponseWithFallback(query, selectedGuide);
+    return geminiResponse;
   } catch (error) {
     console.error('Error handling question:', error);
     return {
@@ -80,91 +75,87 @@ async function handleUserQuestion(query, selectedGuide = 'abhi') {
   }
 }
 
-// Function to get answer from Groq (replacing OpenAI) with guide-specific personality
-async function getGroqResponse(query, selectedGuide = 'abhi') {
+// Function to get answer from Gemini with guide-specific personality and fallback
+async function getGeminiResponseWithFallback(query, selectedGuide = 'abhi') {
   try {
-    // Get API key from environment
-    const apiKey = GROQ_API_KEY;
-    console.log(apiKey);
-    if (!apiKey) {
-      console.error('Groq API key not found');
-      return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try asking your question in a different way or try again later.";
-    }
+    // Build context
+    const context = await buildContext(query);
     
     // Get guide-specific system prompt
     const systemPrompt = await guideService.getGuideSystemPrompt(selectedGuide);
     
-    // Get relevant FAQs to provide as context to Groq
-    const contextFAQs = await FAQ.find({
+    // Generate Gemini response
+    const response = await aiService.generateResponse(
+      query, 
+      systemPrompt,
+      context,
+      selectedGuide
+    );
+
+    // Validate response quality
+    if (isResponseValid(response)) {
+      return {
+        answer: response,
+        backgroundColor: "#E8D1D1",
+        source: 'gemini',
+        confidence: 'high'
+      };
+    }
+
+    // Fallback response if validation fails
+    return getFallbackResponse(new Error('Invalid response'), selectedGuide);
+
+  } catch (error) {
+    console.error('Gemini response failed:', error);
+    return getFallbackResponse(error, selectedGuide);
+  }
+}
+
+// Helper function to build context from FAQs and courses
+async function buildContext(query) {
+  const [contextFAQs, courses] = await Promise.all([
+    FAQ.find({
       $or: [
         { question: { $regex: query, $options: 'i' } },
         { answer: { $regex: query, $options: 'i' } }
       ]
-    }).limit(10).lean();
+    }).lean(),
+    Course.find().limit(15).lean()
+  ]);
 
-    // get courses showing just title and description
-    const courses = await Course.find().limit(10).lean(); 
-    
-    const context = contextFAQs.map(faq => 
-      `Q: ${faq.question}\nA: ${faq.answer}`
-    ).join('\n\n');
-    const contextCourses = courses.map(course => 
-      `- ${course.title}: ${course.description}`
-    ).join('\n');
-   
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "llama3-70b-8192",
-        messages: [
-          {
-            role: 'system',
-            content: `${systemPrompt}
+  const context = contextFAQs.map(faq => 
+    `Q: ${faq.question}\nA: ${faq.answer}`
+  ).join('\n\n');
+  
+  const contextCourses = courses.map(course => 
+    `- ${course.title}: ${course.description}`
+  ).join('\n');
 
-Follow these strict rules:
-- ONLY use the provided context to answer the user.
-- DO NOT invent any information not present in the context.
-- If the user asks about courses, use ONLY the course list provided.
-- If no relevant course is found, say: "I'm sorry, I couldn't find any course matching your request."
+  return `${context}\n\nCOURSES:\n${contextCourses}`;
+}
 
-Here is the GENERAL CONTEXT:
-${context}
+// Function to validate response quality
+function isResponseValid(response) {
+  return response && 
+         response.length > 10 && 
+         response.length < 500 &&
+         !response.includes('I apologize') &&
+         !response.includes('trouble');
+}
 
-Here is the LIST OF COURSES:
-${contextCourses}
-`
-          },
-          {
-            role: "user",
-            content: query
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.1
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Groq API error:', errorData);
-      return "I apologize, but I'm having trouble processing your question right now. Please try again later.";
-    }
+// Function to get fallback response when AI fails
+function getFallbackResponse(error, selectedGuide) {
+  const fallbacks = {
+    abhi: "I'm here to help with your wellness journey. Could you rephrase your question or ask about meditation, breathwork, or our courses? 🌟",
+    ganesha: "Let me offer you wisdom from ancient practices. Please share your question again, and I'll guide you with spiritual knowledge. 🕉️"
+  };
 
-    const data = await response.json();
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-      return data.choices[0].message.content.trim();
-    } else {
-      console.error('Groq API response format error or empty content:', data);
-      return "I apologize, but I received an unexpected response. Please try again.";
-    }
-  } catch (error) {
-    console.error('Error getting Groq response:', error);
-    return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try asking your question in a different way or try again later.";
-  }
+  return {
+    answer: fallbacks[selectedGuide] || fallbacks.abhi,
+    backgroundColor: "#F2E8E8",
+    source: 'fallback',
+    confidence: 'low'
+  };
 }
 
 // New function to log unanswered questions for future FAQ creation
@@ -185,7 +176,7 @@ function isResponsePending(response) {
 
 module.exports = {
   handleUserQuestion,
-  getGroqResponse,
+  getGeminiResponseWithFallback,
   logUnansweredQuestion,
   isResponsePending,
   searchKnowledgeBase
