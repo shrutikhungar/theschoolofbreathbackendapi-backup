@@ -1,6 +1,7 @@
 const fullAccessTagsForChakra = [
   'Enrolled_to_Membership',
   'Enrolled_Holistic Membership',
+  
 ];
 
 const limitedAccessTagsChakra = [
