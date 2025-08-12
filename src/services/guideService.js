@@ -16,6 +16,38 @@ class GuideService {
   }
 
   /**
+   * Get all resources from all active guides
+   * @returns {Promise<Object>} Object with guides and their resources
+   */
+  async getAllGuidesResources() {
+    try {
+      const guides = await Guide.getActiveGuides();
+      
+      const guidesWithResources = await Promise.all(
+        guides.map(async (guide) => {
+          return {
+            guideId: guide.id,
+            guideName: guide.name,
+            guideSubtitle: guide.subtitle,
+            guideAvatar: guide.avatarUrl,
+            guidePersonality: guide.personality,
+            resources: guide.resources || []
+          };
+        })
+      );
+
+      return {
+        success: true,
+        totalGuides: guidesWithResources.length,
+        guides: guidesWithResources
+      };
+    } catch (error) {
+      console.error('Error getting all guides resources:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get guide by ID
    * @param {string} guideId - The guide ID (abhi or ganesha)
    * @returns {Promise<Object>} Guide object

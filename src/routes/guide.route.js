@@ -5,6 +5,9 @@ const controller = require('../controllers/guide.controller');
 // Get all active guides
 router.get('/', controller.getAllGuides);
 
+// Get all resources from all guides
+router.get('/resources/all', controller.getAllGuidesResources);
+
 // Get guide by ID
 router.get('/:guideId', controller.getGuideById);
 

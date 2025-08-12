@@ -10,6 +10,16 @@ exports.getAllGuides = async (req, res, next) => {
     }
 };
 
+// Get all resources from all guides
+exports.getAllGuidesResources = async (req, res, next) => {
+    try {
+        const allResources = await guideService.getAllGuidesResources();
+        res.status(200).json(allResources);
+    } catch (error) {
+        return next(error);
+    }
+};
+
 // Get guide by ID
 exports.getGuideById = async (req, res, next) => {
     try {
