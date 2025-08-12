@@ -30,7 +30,7 @@ class GuideService {
   }
 
   /**
-   * Get guide resources (GIFs for different states)
+   * Get guide resources (flexible resource system)
    * @param {string} guideId - The guide ID
    * @returns {Promise<Object>} Guide resources object
    */
@@ -47,6 +47,109 @@ class GuideService {
       };
     } catch (error) {
       console.error('Error getting guide resources:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get specific resource by name
+   * @param {string} guideId - The guide ID
+   * @param {string} resourceName - The resource name
+   * @returns {Promise<Object>} Resource object
+   */
+  async getResourceByName(guideId, resourceName) {
+    try {
+      const guide = await Guide.getResourceByName(guideId, resourceName);
+      if (!guide) {
+        throw new Error('Guide or resource not found');
+      }
+      return {
+        guideId: guide.id,
+        guideName: guide.name,
+        resource: guide.resources[0]
+      };
+    } catch (error) {
+      console.error('Error getting resource by name:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add new resource to a guide
+   * @param {string} guideId - The guide ID
+   * @param {Object} resourceData - The resource data
+   * @returns {Promise<Object>} Updated guide
+   */
+  async addResource(guideId, resourceData) {
+    try {
+      const guide = await Guide.getGuideById(guideId);
+      if (!guide) {
+        throw new Error('Guide not found');
+      }
+
+      // Set order if not provided
+      if (!resourceData.order) {
+        resourceData.order = guide.resources.length + 1;
+      }
+
+      guide.resources.push(resourceData);
+      await guide.save();
+
+      return guide;
+    } catch (error) {
+      console.error('Error adding resource:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update existing resource
+   * @param {string} guideId - The guide ID
+   * @param {string} resourceName - The resource name
+   * @param {Object} updateData - The update data
+   * @returns {Promise<Object>} Updated guide
+   */
+  async updateResource(guideId, resourceName, updateData) {
+    try {
+      const guide = await Guide.getGuideById(guideId);
+      if (!guide) {
+        throw new Error('Guide not found');
+      }
+
+      const resourceIndex = guide.resources.findIndex(r => r.name === resourceName);
+      if (resourceIndex === -1) {
+        throw new Error('Resource not found');
+      }
+
+      guide.resources[resourceIndex] = { ...guide.resources[resourceIndex], ...updateData };
+      await guide.save();
+
+      return guide;
+    } catch (error) {
+      console.error('Error updating resource:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove resource from guide
+   * @param {string} guideId - The guide ID
+   * @param {string} resourceName - The resource name
+   * @returns {Promise<Object>} Updated guide
+   */
+  async removeResource(guideId, resourceName) {
+    try {
+      const guide = await Guide.getGuideById(guideId);
+      if (!guide) {
+        throw new Error('Guide not found');
+      }
+
+      guide.resources = guide.resources.filter(r => r.name !== resourceName);
+      await guide.save();
+
+      return guide;
+    } catch (error) {
+      console.error('Error removing resource:', error);
       throw error;
     }
   }
@@ -96,20 +199,29 @@ Your personality traits:
 - Uses emojis like 🌟 and 🌼 where appropriate
 
 Keep responses concise, warm, and focused on meditation, breathwork, and wellness. If you recommend a breathing exercise, mention www.youtube.com/Theschoolofbreath.`,
-          resources: {
-            welcome: {
-              gifUrl: 'https://storage.googleapis.com/schoolbreathvideos/gifs/abhi_welcome.gif',
-              description: 'Abhi welcome animation'
+          resources: [
+            {
+              name: 'welcome',
+              description: 'Abhi welcome animation',
+              image: 'https://storage.googleapis.com/schoolbreathvideos/gifs/abhi_welcome.gif',
+              type: 'gif',
+              order: 1
             },
-            typing: {
-              gifUrl: 'https://storage.googleapis.com/schoolbreathvideos/gifs/abhi_typing.gif',
-              description: 'Abhi typing animation'
+            {
+              name: 'typing',
+              description: 'Abhi typing animation',
+              image: 'https://storage.googleapis.com/schoolbreathvideos/gifs/abhi_typing.gif',
+              type: 'gif',
+              order: 2
             },
-            sent: {
-              gifUrl: 'https://storage.googleapis.com/schoolbreathvideos/gifs/abhi_sent.gif',
-              description: 'Abhi message sent animation'
+            {
+              name: 'sent',
+              description: 'Abhi message sent animation',
+              image: 'https://storage.googleapis.com/schoolbreathvideos/gifs/abhi_sent.gif',
+              type: 'gif',
+              order: 3
             }
-          }
+          ]
         },
         {
           id: 'ganesha',
@@ -130,20 +242,29 @@ Your personality traits:
 - Uses emojis like 🕉️ and 🧘‍♂️ where appropriate
 
 Provide guidance that draws from ancient yogic texts, spiritual wisdom, and traditional practices. Help users connect with their inner wisdom and overcome obstacles on their spiritual journey.`,
-          resources: {
-            welcome: {
-              gifUrl: 'https://storage.googleapis.com/schoolbreathvideos/gifs/ganesha_welcome.gif',
-              description: 'Ganesha welcome animation'
+          resources: [
+            {
+              name: 'welcome',
+              description: 'Ganesha welcome animation',
+              image: 'https://storage.googleapis.com/schoolbreathvideos/images/ganesha_welcome.gif',
+              type: 'gif',
+              order: 1
             },
-            typing: {
-              gifUrl: 'https://storage.googleapis.com/schoolbreathvideos/gifs/ganesha_typing.gif',
-              description: 'Ganesha typing animation'
+            {
+              name: 'typing',
+              description: 'Ganesha typing animation',
+              image: 'https://storage.googleapis.com/schoolbreathvideos/images/ganesha_typing.gif',
+              type: 'gif',
+              order: 2
             },
-            sent: {
-              gifUrl: 'https://storage.googleapis.com/schoolbreathvideos/gifs/ganesha_sent.gif',
-              description: 'Ganesha message sent animation'
+            {
+              name: 'sent',
+              description: 'Ganesha message sent animation',
+              image: 'https://storage.googleapis.com/schoolbreathvideos/images/ganesha_sent.gif',
+              type: 'gif',
+              order: 3
             }
-          }
+          ]
         }
       ];
 

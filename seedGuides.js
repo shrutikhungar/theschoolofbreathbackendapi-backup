@@ -22,9 +22,11 @@ async function seedGuides() {
     console.log('\n🎯 Guide Resources:');
     result.guides.forEach(guide => {
       console.log(`\n   ${guide.name}:`);
-      console.log(`     Welcome GIF: ${guide.resources.welcome.gifUrl}`);
-      console.log(`     Typing GIF: ${guide.resources.typing.gifUrl}`);
-      console.log(`     Sent GIF: ${guide.resources.sent.gifUrl}`);
+      guide.resources.forEach(resource => {
+        console.log(`     ${resource.name}: ${resource.description}`);
+        console.log(`       Image: ${resource.image}`);
+        console.log(`       Type: ${resource.type}, Order: ${resource.order}`);
+      });
     });
 
   } catch (error) {

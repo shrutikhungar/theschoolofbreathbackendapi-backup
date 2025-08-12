@@ -1,18 +1,32 @@
 const mongoose = require('mongoose');
 
-// Schema for guide resources (GIFs for different states)
+// Schema for guide resources (flexible resource system)
 const guideResourceSchema = new mongoose.Schema({
-  welcome: {
-    gifUrl: { type: String, required: true },
-    description: { type: String, default: 'Welcome animation' }
+  name: {
+    type: String,
+    required: true,
+    trim: true
   },
-  typing: {
-    gifUrl: { type: String, required: true },
-    description: { type: String, default: 'Typing animation' }
+  description: {
+    type: String,
+    default: 'Resource description'
   },
-  sent: {
-    gifUrl: { type: String, required: true },
-    description: { type: String, default: 'Message sent animation' }
+  image: {
+    type: String,
+    required: true
+  },
+  type: {
+    type: String,
+    enum: ['gif', 'image', 'video', 'audio', 'other'],
+    default: 'image'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  order: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -53,10 +67,7 @@ const guideSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  resources: {
-    type: guideResourceSchema,
-    required: true
-  },
+  resources: [guideResourceSchema],
   isActive: {
     type: Boolean,
     default: true
@@ -92,6 +103,22 @@ guideSchema.statics = {
   // Get guide resources
   getGuideResources: function(guideId) {
     return this.findOne({ id: guideId, isActive: true }, { resources: 1, name: 1 });
+  },
+
+  // Get specific resource by name
+  getResourceByName: function(guideId, resourceName) {
+    return this.findOne(
+      { id: guideId, isActive: true, 'resources.name': resourceName },
+      { 'resources.$': 1, name: 1 }
+    );
+  },
+
+  // Get active resources only
+  getActiveResources: function(guideId) {
+    return this.findOne(
+      { id: guideId, isActive: true },
+      { resources: { $filter: { input: '$resources', cond: { $eq: ['$$this.isActive', true] } } }, name: 1 }
+    );
   }
 };
 

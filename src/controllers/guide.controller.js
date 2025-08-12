@@ -102,3 +102,108 @@ exports.seedGuides = async (req, res, next) => {
         return next(error);
     }
 }; 
+
+// Add new resource to guide
+exports.addResource = async (req, res, next) => {
+    try {
+        const { guideId } = req.params;
+        const resourceData = req.body;
+        
+        if (!guideId || !resourceData.name || !resourceData.image) {
+            return res.status(400).json({ 
+                error: 'Guide ID, resource name, and image are required' 
+            });
+        }
+
+        const updatedGuide = await guideService.addResource(guideId, resourceData);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Resource added successfully',
+            guide: updatedGuide
+        });
+    } catch (error) {
+        if (error.message === 'Guide not found') {
+            return res.status(404).json({ error: 'Guide not found' });
+        }
+        return next(error);
+    }
+};
+
+// Update existing resource
+exports.updateResource = async (req, res, next) => {
+    try {
+        const { guideId, resourceName } = req.params;
+        const updateData = req.body;
+        
+        if (!guideId || !resourceName) {
+            return res.status(400).json({ 
+                error: 'Guide ID and resource name are required' 
+            });
+        }
+
+        const updatedGuide = await guideService.updateResource(guideId, resourceName, updateData);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Resource updated successfully',
+            guide: updatedGuide
+        });
+    } catch (error) {
+        if (error.message === 'Guide not found') {
+            return res.status(404).json({ error: 'Guide not found' });
+        }
+        if (error.message === 'Resource not found') {
+            return res.status(404).json({ error: 'Resource not found' });
+        }
+        return next(error);
+    }
+};
+
+// Remove resource from guide
+exports.removeResource = async (req, res, next) => {
+    try {
+        const { guideId, resourceName } = req.params;
+        
+        if (!guideId || !resourceName) {
+            return res.status(400).json({ 
+                error: 'Guide ID and resource name are required' 
+            });
+        }
+
+        const updatedGuide = await guideService.removeResource(guideId, resourceName);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Resource removed successfully',
+            guide: updatedGuide
+        });
+    } catch (error) {
+        if (error.message === 'Guide not found') {
+            return res.status(404).json({ error: 'Guide not found' });
+        }
+        return next(error);
+    }
+};
+
+// Get specific resource by name
+exports.getResourceByName = async (req, res, next) => {
+    try {
+        const { guideId, resourceName } = req.params;
+        
+        if (!guideId || !resourceName) {
+            return res.status(400).json({ 
+                error: 'Guide ID and resource name are required' 
+            });
+        }
+
+        const resource = await guideService.getResourceByName(guideId, resourceName);
+        
+        res.status(200).json(resource);
+    } catch (error) {
+        if (error.message === 'Guide or resource not found') {
+            return res.status(404).json({ error: 'Guide or resource not found' });
+        }
+        return next(error);
+    }
+}; 
