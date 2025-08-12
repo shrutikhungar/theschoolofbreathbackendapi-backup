@@ -35,7 +35,7 @@ async function handleUserQuestion(query, selectedGuide = 'abhi') {
 
 // Function to clean AI response from unwanted characters
 function cleanAIResponse(response) {
-  if (!response) return response;
+  if (!response || typeof response !== 'string') return response;
   
   return response
     .replace(/\\n/g, ' ') // Remove \n characters
@@ -245,7 +245,7 @@ IMPORTANT: You MUST search the database using search_faqs or search_courses tool
       console.log('🔍 Forced search result:', forcedSearchResult);
       
       // Check if forced search found results
-      if (forcedSearchResult && forcedSearchResult.results && forcedSearchResult.results.length > 0) {
+      if (forcedSearchResult && forcedSearchResult.faqs && forcedSearchResult.faqs.length > 0) {
         console.log('✅ Forced search found results, generating response...');
         try {
           // Generate response with forced search results
@@ -256,7 +256,7 @@ IMPORTANT: You MUST search the database using search_faqs or search_courses tool
           console.error('❌ Error generating final response:', error);
           // If final response generation fails, return the raw search results
           return {
-            answer: `Based on your question "${query}", I found this information: ${forcedSearchResult.results[0].answer}`,
+            answer: `Based on your question "${query}", I found this information: ${forcedSearchResult.faqs[0].answer}`,
             backgroundColor: "#E8D1D1",
             source: 'database_search',
             confidence: 'medium'
@@ -286,69 +286,69 @@ async function executeToolCall(functionCall) {
   
   try {
     switch (name) {
-      case 'search_faqs':
-        console.log(`🔍 Searching FAQs for: "${args.query}"`);
-        const faqs = await FAQ.find({
-          $or: [
-            { question: { $regex: args.query, $options: 'i' } },
-            { answer: { $regex: args.query, $options: 'i' } },
-            ...(args.category ? [{ category: args.category }] : [])
-          ]
-        }).limit(5).lean();
+      case "search_faqs":
+  {
+    const faqs = await FAQ.find({
+      $or: [
+        { question: { $regex: args.query, $options: "i" } },
+        { answer: { $regex: args.query, $options: "i" } }
+      ]
+    }).lean();
+
+    return {
+      faqs: faqs.map(faq => ({
+        id: faq._id,
+        question: faq.question,
+        answer: faq.answer,
+        category: faq.category || "General",
+        keywords: [],
+        lastUpdated: faq.updatedAt ? faq.updatedAt.toISOString().split('T')[0] : "Not available"
+      }))
+    };
+  }
         
-        console.log(`📚 Found ${faqs.length} FAQ matches:`, faqs.map(f => f.question));
+        case "get_course_details":
+          {
+            const course = await Course.findOne({ _id: args.id }).lean();
+            return {
+              courseDetails: course
+                ? [{
+                    id: course._id,
+                    title: course.title || "Title not available",
+                    description: course.description || "Description not available",
+                    type: course.type || "Type not specified",
+                    price: "Price information not available",
+                    duration: "Duration not specified",
+                    schedule: "Schedule not specified",
+                    startDate: "Start date not available"
+                  }]
+                : []
+            };
+          }
         
-        return {
-          tool: 'search_faqs',
-          query: args.query,
-          results: faqs.map(faq => ({
-            question: faq.question,
-            answer: faq.answer,
-            category: faq.category
-          }))
-        };
+        case "search_courses":
+          {
+            const courses = await Course.find({
+              $or: [
+                { title: { $regex: args.query, $options: "i" } },
+                { description: { $regex: args.query, $options: "i" } },
+                { type: { $regex: args.query, $options: "i" } }
+              ]
+            }).lean();
         
-      case 'search_courses':
-        console.log(`🔍 Searching courses for: "${args.query}"`);
-        const courses = await Course.find({
-          $or: [
-            { title: { $regex: args.query, $options: 'i' } },
-            { description: { $regex: args.query, $options: 'i' } },
-            ...(args.type ? [{ type: args.type }] : [])
-          ]
-        }).limit(5).lean();
-        
-        console.log(`📚 Found ${courses.length} course matches:`, courses.map(c => c.title));
-        
-        return {
-          tool: 'search_courses',
-          query: args.query,
-          results: courses.map(course => ({
-            title: course.title,
-            description: course.description,
-            type: course.type
-          }))
-        };
-        
-      case 'get_course_details':
-        console.log(`🔍 Getting details for course: "${args.course_title}"`);
-        const course = await Course.findOne({
-          title: { $regex: args.course_title, $options: 'i' }
-        }).lean();
-        
-        console.log(`📚 Course found:`, course ? course.title : 'None');
-        
-        return {
-          tool: 'get_course_details',
-          course_title: args.course_title,
-          result: course ? {
-            title: course.title,
-            description: course.description,
-            type: course.type,
-            sections: course.sections?.length || 0,
-            accessTags: course.accessTags || []
-          } : null
-        };
+            return {
+              courses: courses.map(course => ({
+                id: course._id,
+                title: course.title || "Title not available",
+                description: course.description || "Description not available",
+                type: course.type || "Type not specified",
+                price: "Price information not available",
+                duration: "Duration not specified",
+                schedule: "Schedule not specified",
+                startDate: "Start date not available"
+              }))
+            };
+          }
         
       default:
         console.log(`❌ Unknown tool: ${name}`);
