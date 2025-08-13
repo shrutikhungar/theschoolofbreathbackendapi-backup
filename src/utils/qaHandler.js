@@ -7,7 +7,7 @@ const guideService = require('../services/guideService');
 
 // Load environment variables for OpenAI API key
 
-const OPENAI_API_KEY = OPENAI_API_KEY_VAR ?? process.env.OPENAI_API_KEY;
+const OPENAI_API_KEY = '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';
 
 // RAG: Generate embeddings using OpenAI (ONLY for setup, not during chat)
 async function generateEmbedding(text) {
