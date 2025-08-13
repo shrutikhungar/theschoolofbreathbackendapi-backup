@@ -1,117 +1,211 @@
-// utils/qaHandler.js - Updated with MongoDB integration and Groq API
-const Fuse = require('fuse.js');
-const axios = require('axios');
+// utils/qaHandler.js - Clean RAG Implementation
 const FAQ = require('../models/faq.model');
-const { GROQ_API_KEY } = require('../configs/vars');
+const { GROQ_API_KEY, OPENAI_API_KEY: OPENAI_API_KEY_VAR } = require('../configs/vars');
 const Course = require('../models/courses.model');
 const guideService = require('../services/guideService');
 
-// Function to search the knowledge base using Fuse.js
-function searchKnowledgeBase(entries, query) {
-  const options = {
-    keys: ['question', 'answer', 'keywords'],
-    includeScore: true,
-    threshold: 0.4, // Adjust threshold for fuzziness (0.0 = exact match, 1.0 = match anything)
-  };
-  const fuse = new Fuse(entries, options);
-  const results = fuse.search(query);
-  
-  if (results.length > 0) {
-    // Return the raw Fuse results (up to 3)
-    return results.slice(0, 3);
-  } else {
+
+// Load environment variables for OpenAI API key
+
+const OPENAI_API_KEY = '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';
+
+// RAG: Generate embeddings using OpenAI (ONLY for setup, not during chat)
+async function generateEmbedding(text) {
+  try {
+    if (!OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not found');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        input: text,
+        model: "text-embedding-3-small" // Fast and cost-effective
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data[0].embedding;
+  } catch (error) {
+    console.error('Error generating embedding:', error);
+    return null;
+  }
+}
+
+// RAG: Fast vector search using PRE-GENERATED embeddings (no API calls during chat!)
+async function vectorSearch(query, limit = 8) {
+  try {
+    console.log('🔍 Starting vector search for query:', query);
+    
+    // Generate embedding for USER'S question only (this is the only API call during chat)
+    const queryEmbedding = await generateEmbedding(query);
+    if (!queryEmbedding) {
+      throw new Error('Failed to generate query embedding');
+    }
+    
+    console.log('✅ Query embedding generated successfully');
+
+    // Use MongoDB Atlas Vector Search with PRE-GENERATED FAQ embeddings
+    console.log('🗄️ Attempting MongoDB Atlas Vector Search...');
+    const results = await FAQ.aggregate([
+      {
+        $vectorSearch: {
+          queryVector: queryEmbedding,        // ← User question (new)
+          path: "embedding",                  // ← FAQ content (pre-generated!)
+          numCandidates: 200,                 // ← Increased from 100
+          limit: limit,
+          index: "faq_vector"
+        }
+      },
+      {
+        $project: {
+          question: 1,
+          answer: 1,
+          category: 1,
+          backgroundColor: 1,
+          score: { $meta: "vectorSearchScore" }
+        }
+      }
+    ]);
+
+    // Filter results with more lenient threshold
+    const filteredResults = results.filter(result => result.score > 0.1); // Reduced from default 0.7
+    
+    console.log(`✅ Vector search successful! Found ${results.length} raw results, ${filteredResults.length} after filtering`);
+    return filteredResults;
+  } catch (error) {
+    console.error('❌ Vector search error:', error.message);
+    console.log('🔄 Falling back to text search...');
+    // Fallback to text search
+    return await fallbackTextSearch(query, limit);
+  }
+}
+
+// Fallback text search when vector search fails
+async function fallbackTextSearch(query, limit = 8) {
+  try {
+    console.log('🔍 Using fallback text search...');
+    
+    // Split query into keywords for better matching
+    const keywords = query.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+    console.log('🔑 Search keywords:', keywords);
+    
+    // More flexible text search
+    const results = await FAQ.find({
+      $or: [
+        // Exact phrase match
+        { question: { $regex: query, $options: 'i' } },
+        { answer: { $regex: query, $options: 'i' } },
+        // Keyword matches
+        { question: { $regex: keywords.join('|'), $options: 'i' } },
+        { answer: { $regex: keywords.join('|'), $options: 'i' } }
+      ]
+    }).limit(limit).lean();
+
+    console.log(`📊 Fallback search found ${results.length} results`);
+    
+    // Score results based on relevance
+    const scoredResults = results.map(item => {
+      let score = 0.5; // Base score
+      
+      // Boost score for exact matches
+      if (item.question.toLowerCase().includes(query.toLowerCase())) score += 0.3;
+      if (item.answer.toLowerCase().includes(query.toLowerCase())) score += 0.2;
+      
+      // Boost score for keyword matches
+      const questionWords = item.question.toLowerCase().split(/\s+/);
+      const answerWords = item.answer.toLowerCase().split(/\s+/);
+      const commonKeywords = keywords.filter(keyword => 
+        questionWords.includes(keyword) || answerWords.includes(keyword)
+      );
+      score += (commonKeywords.length / keywords.length) * 0.2;
+      
+      return { ...item, score: Math.min(1.0, score) };
+    });
+    
+    // Sort by score
+    scoredResults.sort((a, b) => b.score - a.score);
+    
+    return scoredResults;
+  } catch (error) {
+    console.error('Fallback search error:', error);
     return [];
   }
 }
 
-// Main handler function for user questions
+// RAG: Main handler with PRE-GENERATED embeddings (super fast!)
 async function handleUserQuestion(query, selectedGuide = 'abhi') {
-  // Check for greetings
-  const greetingKeywords = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"];
-  const lowerCaseQuery = query.toLowerCase().trim();
-  if (greetingKeywords.includes(lowerCaseQuery)) {
-    const greetings = ["Hello there! How can I help you today?", "Hi! What's on your mind?", "Hey! Ask me anything about The School of Breath."];
-    return {
-      answer: greetings[Math.floor(Math.random() * greetings.length)],
-      backgroundColor: "#E8D1D1",
-      source: 'greeting'
-    };
-  }
-
   try {
-    // First try to find an answer in MongoDB knowledge base
-    const allFAQs = await FAQ.find({}).lean(); // Get all FAQs from MongoDB
+    // 1. Fast vector search using pre-generated embeddings
+    const relevantContent = await vectorSearch(query);
     
-    // Use the searchKnowledgeBase function
-    const results = searchKnowledgeBase(allFAQs, query);
-    
-    // Return the best match if it exists and has a good score
-    if (results.length > 0 && results[0].score < 0.4) {
-      // Track this FAQ view in the database
-      await FAQ.findByIdAndUpdate(results[0].item._id, { 
-        $inc: { views: 1 },
-        $set: { lastAccessed: new Date() }
-      });
+    // 2. Generate intelligent response using RAG
+    if (relevantContent.length > 0) {
+      const response = await generateRAGResponse(query, relevantContent, selectedGuide);
+      
+      // Update usage metrics
+      if (relevantContent[0]._id) {
+        await FAQ.findByIdAndUpdate(relevantContent[0]._id, {
+          $inc: { views: 1 },
+          $set: { lastAccessed: new Date() }
+        });
+      }
       
       return {
-        answer: results[0].item.answer,
-        backgroundColor: results[0].item.backgroundColor,
-        source: 'knowledge_base', // Indicates answer came from our knowledge base
-        faqId: results[0].item._id,
-        category: results[0].item.category
+        answer: response,
+        backgroundColor: relevantContent[0].backgroundColor || "#E8D1D1",
+        source: 'rag_vector_search',
+        confidence: relevantContent[0].score || 0.8,
+        relevantSources: relevantContent.length
       };
     }
     
-    // If no local match found, use Groq with guide-specific personality
-    const groqResponse = await getGroqResponse(query, selectedGuide);
+    // 3. Generate response from scratch if no relevant content
+    const fallbackResponse = await generateFallbackResponse(query, selectedGuide);
+    
     return {
-      answer: groqResponse,
-      backgroundColor: "#E8D1D1", // Default background color for AI responses
-      source: 'groq', // Indicates answer came from Groq
-      isFallback: true // Flag to indicate this was a fallback response
+      answer: fallbackResponse,
+      backgroundColor: "#E8D1D1",
+      source: 'ai_generated',
+      confidence: 0.2
     };
+    
   } catch (error) {
-    console.error('Error handling question:', error);
-    return {
-      answer: "I apologize, but I'm having trouble processing your question right now. Please try again later.",
-      backgroundColor: "#F2E8E8", // Default error background color
-      source: 'error' // Indicates an error occurred
-    };
+    console.error('Error in RAG handler:', error);
+    return await generateErrorResponse(query, error);
   }
 }
 
-// Function to get answer from Groq (replacing OpenAI) with guide-specific personality
-async function getGroqResponse(query, selectedGuide = 'abhi') {
+// RAG: Generate response using retrieved content
+async function generateRAGResponse(query, relevantContent, selectedGuide) {
   try {
-    // Get API key from environment
     const apiKey = GROQ_API_KEY;
-    console.log(apiKey);
     if (!apiKey) {
-      console.error('Groq API key not found');
-      return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try asking your question in a different way or try again later.";
+      throw new Error('Groq API key not found');
     }
     
-    // Get guide-specific system prompt
+    // Get guide personality
     const systemPrompt = await guideService.getGuideSystemPrompt(selectedGuide);
     
-    // Get relevant FAQs to provide as context to Groq
-    const contextFAQs = await FAQ.find({
-      $or: [
-        { question: { $regex: query, $options: 'i' } },
-        { answer: { $regex: query, $options: 'i' } }
-      ]
-    }).limit(10).lean();
-
-    // get courses showing just title and description
-    const courses = await Course.find().limit(10).lean(); 
-    
-    const context = contextFAQs.map(faq => 
-      `Q: ${faq.question}\nA: ${faq.answer}`
+    // Build context from relevant content
+    const contextText = relevantContent.map((item, index) => 
+      `Source ${index + 1} (Relevance: ${(item.score * 100).toFixed(1)}%):\nQ: ${item.question}\nA: ${item.answer}`
     ).join('\n\n');
-    const contextCourses = courses.map(course => 
+    
+    // Get available courses for context
+    const courses = await Course.find().limit(14).lean();
+    const courseContext = courses.map(course => 
       `- ${course.title}: ${course.description}`
     ).join('\n');
-   
+    
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -125,68 +219,156 @@ async function getGroqResponse(query, selectedGuide = 'abhi') {
             role: 'system',
             content: `${systemPrompt}
 
-Follow these strict rules:
-- ONLY use the provided context to answer the user.
-- DO NOT invent any information not present in the context.
-- If the user asks about courses, use ONLY the course list provided.
-- If no relevant course is found, say: "I'm sorry, I couldn't find any course matching your request."
+You are a RAG-enhanced AI assistant. Answer the user's question using the provided relevant sources.
 
-Here is the GENERAL CONTEXT:
-${context}
+RELEVANT SOURCES (ranked by relevance):
+${contextText}
 
-Here is the LIST OF COURSES:
-${contextCourses}
-`
+AVAILABLE COURSES:
+${courseContext}
+
+INSTRUCTIONS:
+- Use the relevant sources to provide accurate answers
+- Keep responses SHORT and CONCISE (max 2-3 sentences)
+- NO markdown formatting (no **, ##, -, /,etc.)
+- NO emojis or special characters
+- Be direct and helpful
+- If sources don't fully answer the question, say so briefly
+- Reference specific courses when relevant`
           },
           {
             role: "user",
             content: query
           }
         ],
-        max_tokens: 150,
+        max_tokens: 150, // Reduced from 300 for shorter responses
         temperature: 0.1
       })
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Groq API error:', errorData);
-      return "I apologize, but I'm having trouble processing your question right now. Please try again later.";
+      throw new Error(`Groq API error: ${response.status}`);
     }
-
+    
     const data = await response.json();
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-      return data.choices[0].message.content.trim();
-    } else {
-      console.error('Groq API response format error or empty content:', data);
-      return "I apologize, but I received an unexpected response. Please try again.";
-    }
+    let answer = data.choices[0].message.content.trim();
+    console.log('🔍 RAG response:', answer);
+    // Clean up any remaining markdown or formatting
+    answer = answer
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
+      .replace(/\*(.*?)\*/g, '$1')     // Remove *italic*
+      .replace(/##\s*/g, '')           // Remove ## headers
+      .replace(/#\s*/g, '')            // Remove # headers
+      .replace(/-\s*/g, '')            // Remove - lists
+      .replace(/\n\s*\n/g, '\n')      // Remove extra line breaks
+      .replace(/^\s+|\s+$/g, '')      // Trim whitespace
+      .replace(/[🌟🌼🙏😊✨💫]/g, '') // Remove emojis
+      .replace(/\s+/g, ' ')           // Normalize spaces
+      .trim();
+    
+    return answer;
+    
   } catch (error) {
-    console.error('Error getting Groq response:', error);
-    return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try asking your question in a different way or try again later.";
+    console.error('Error generating RAG response:', error);
+    // Fallback to best relevant content
+    return relevantContent[0]?.answer || "I'm having trouble processing your question right now.";
   }
 }
 
-// New function to log unanswered questions for future FAQ creation
-async function logUnansweredQuestion(question, userId = null) {
+// Generate fallback response when no relevant content exists
+async function generateFallbackResponse(query, selectedGuide) {
   try {
-    // In a real implementation, you might save this to an UnansweredQuestions collection
-    console.log(`Unanswered question logged: "${question}" from user ${userId || 'anonymous'}`);
-    // Could also send notification to admin about potential FAQ gap
+    const apiKey = GROQ_API_KEY;
+    if (!apiKey) {
+      return "I don't have specific information about that yet, but I'd be happy to help you with general questions about breathwork and meditation.";
+    }
+    
+    const systemPrompt = await guideService.getGuideSystemPrompt(selectedGuide);
+    
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "llama3-70b-8192",
+        messages: [
+          {
+            role: 'system',
+            content: `${systemPrompt}
+
+The user asked a question that isn't in our knowledge base yet. Provide a helpful, general response about breathwork, meditation, or wellness that might be related to their question. Be honest about not having specific information but offer general guidance.
+
+INSTRUCTIONS:
+- Keep response SHORT (1-2 sentences max)
+- NO markdown formatting
+- NO emojis or special characters
+- Be direct and helpful`
+          },
+          {
+            role: "user",
+            content: query
+          }
+        ],
+        max_tokens: 100, // Reduced from 200 for shorter responses
+        temperature: 0.3
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    let answer = data.choices[0].message.content.trim();
+    
+    // Clean up any remaining markdown or formatting
+    answer = answer
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
+      .replace(/\*(.*?)\*/g, '$1')     // Remove *italic*
+      .replace(/##\s*/g, '')           // Remove ## headers
+      .replace(/#\s*/g, '')            // Remove # headers
+      .replace(/-\s*/g, '')            // Remove - lists
+      .replace(/\n\s*\n/g, '\n')      // Remove extra line breaks
+      .replace(/^\s+|\s+$/g, '')      // Trim whitespace
+      .replace(/[🌟🌼🙏😊✨💫]/g, '') // Remove emojis
+      .replace(/\s+/g, ' ')           // Normalize spaces
+      .trim();
+    
+    return answer;
+    
   } catch (error) {
-    console.error('Error logging unanswered question:', error);
+    console.error('Error generating fallback response:', error);
+    return "I don't have specific information about that yet, but I'm here to help with general questions about breathwork and wellness.";
   }
 }
 
-// Function to check if the response is pending
-function isResponsePending(response) {
-  return response === null;
+// Generate contextual error response
+async function generateErrorResponse(query, error) {
+  const errorMessages = [
+    `I'm having trouble with "${query}" right now. Please try again in a moment.`,
+    `I couldn't process "${query}" at the moment. Try asking in a different way.`,
+    `There was an issue with "${query}". Please try again later.`
+  ];
+  
+  return {
+    answer: errorMessages[Math.floor(Math.random() * errorMessages.length)],
+    backgroundColor: "#F2E8E8",
+    source: 'error',
+    errorType: error.name
+  };
 }
 
 module.exports = {
+  // Core RAG functions
   handleUserQuestion,
-  getGroqResponse,
-  logUnansweredQuestion,
-  isResponsePending,
-  searchKnowledgeBase
+  vectorSearch,
+  generateRAGResponse,
+  generateFallbackResponse,
+  generateErrorResponse,
+  
+  // Utility functions
+  generateEmbedding,
+  fallbackTextSearch
 };
