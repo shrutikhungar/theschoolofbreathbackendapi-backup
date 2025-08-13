@@ -1,36 +1,47 @@
-// utils/qaHandler.js - Updated with MongoDB integration and Groq API
-const Fuse = require('fuse.js');
+// utils/qaHandler.js - OpenAI Assistant implementation
 const axios = require('axios');
-const FAQ = require('../models/faq.model');
-const { GROQ_API_KEY } = require('../configs/vars');
-const Course = require('../models/courses.model');
 const guideService = require('../services/guideService');
 
-// Function to search the knowledge base using Fuse.js
-function searchKnowledgeBase(entries, query) {
-  const options = {
-    keys: ['question', 'answer', 'keywords'],
-    includeScore: true,
-    threshold: 0.4, // Adjust threshold for fuzziness (0.0 = exact match, 1.0 = match anything)
-  };
-  const fuse = new Fuse(entries, options);
-  const results = fuse.search(query);
-  
-  if (results.length > 0) {
-    // Return the raw Fuse results (up to 3)
-    return results.slice(0, 3);
-  } else {
-    return [];
-  }
+// OpenAI Assistant configuration
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const ASSISTANT_ID = 'asst_DpE9BT8GVThgq0Wp6W4hTtpk';
+
+const OPENAI_HEADERS = {
+  'Authorization': `Bearer ${OPENAI_API_KEY}`,
+  'Content-Type': 'application/json',
+  'OpenAI-Beta': 'assistants=v2'
+};
+
+// Delay helper
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Clean response function to remove markdown and formatting
+function cleanResponse(answer) {
+  return answer
+    .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
+    .replace(/\*(.*?)\*/g, '$1')     // Remove *italic*
+    .replace(/##\s*/g, '')           // Remove ## headers
+    .replace(/#\s*/g, '')            // Remove # headers
+    .replace(/-\s*/g, '')            // Remove - lists
+    .replace(/\n\s*\n/g, '\n')      // Remove extra line breaks
+    .replace(/^\s+|\s+$/g, '')      // Trim whitespace
+    .replace(/[🌟🌼🙏😊✨💫]/g, '') // Remove emojis
+    .replace(/\s+/g, ' ')           // Normalize spaces
+    .trim();
 }
 
 // Main handler function for user questions
 async function handleUserQuestion(query, selectedGuide = 'abhi') {
-  // Check for greetings
-  const greetingKeywords = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"];
   const lowerCaseQuery = query.toLowerCase().trim();
-  if (greetingKeywords.includes(lowerCaseQuery)) {
-    const greetings = ["Hello there! How can I help you today?", "Hi! What's on your mind?", "Hey! Ask me anything about The School of Breath."];
+
+  // Greeting detection (partial match)
+  const greetingKeywords = ["hello", "hi", "hey", "good morning", "good afternoon", "good evening"];
+  if (greetingKeywords.some(greet => lowerCaseQuery.startsWith(greet))) {
+    const greetings = [
+      "Hello there! How can I help you today?",
+      "Hi! What's on your mind?",
+      "Hey! Ask me anything about The School of Breath."
+    ];
     return {
       answer: greetings[Math.floor(Math.random() * greetings.length)],
       backgroundColor: "#E8D1D1",
@@ -39,154 +50,203 @@ async function handleUserQuestion(query, selectedGuide = 'abhi') {
   }
 
   try {
-    // First try to find an answer in MongoDB knowledge base
-    const allFAQs = await FAQ.find({}).lean(); // Get all FAQs from MongoDB
-    
-    // Use the searchKnowledgeBase function
-    const results = searchKnowledgeBase(allFAQs, query);
-    
-    // Return the best match if it exists and has a good score
-    if (results.length > 0 && results[0].score < 0.4) {
-      // Track this FAQ view in the database
-      await FAQ.findByIdAndUpdate(results[0].item._id, { 
-        $inc: { views: 1 },
-        $set: { lastAccessed: new Date() }
-      });
-      
-      return {
-        answer: results[0].item.answer,
-        backgroundColor: results[0].item.backgroundColor,
-        source: 'knowledge_base', // Indicates answer came from our knowledge base
-        faqId: results[0].item._id,
-        category: results[0].item.category
-      };
-    }
-    
-    // If no local match found, use Groq with guide-specific personality
-    const groqResponse = await getGroqResponse(query, selectedGuide);
+    const assistantResponse = await getOpenAIResponse(query, selectedGuide);
     return {
-      answer: groqResponse,
-      backgroundColor: "#E8D1D1", // Default background color for AI responses
-      source: 'groq', // Indicates answer came from Groq
-      isFallback: true // Flag to indicate this was a fallback response
+      answer: assistantResponse,
+      backgroundColor: "#E8D1D1",
+      source: 'openai_assistant'
     };
   } catch (error) {
-    console.error('Error handling question:', error);
+    console.error('Error handling question:', error.message || error);
     return {
       answer: "I apologize, but I'm having trouble processing your question right now. Please try again later.",
-      backgroundColor: "#F2E8E8", // Default error background color
-      source: 'error' // Indicates an error occurred
+      backgroundColor: "#F2E8E8",
+      source: 'error'
     };
   }
 }
 
-// Function to get answer from Groq (replacing OpenAI) with guide-specific personality
-async function getGroqResponse(query, selectedGuide = 'abhi') {
+// Get response from OpenAI Assistant
+async function getOpenAIResponse(query, selectedGuide = 'abhi') {
+  if (!OPENAI_API_KEY || !ASSISTANT_ID) {
+    console.error('OpenAI API key or Assistant ID not found');
+    return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try again later.";
+  }
+
   try {
-    // Get API key from environment
-    const apiKey = GROQ_API_KEY;
-    console.log(apiKey);
-    if (!apiKey) {
-      console.error('Groq API key not found');
-      return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try asking your question in a different way or try again later.";
+    const guideContext = await guideService.getGuideSystemPrompt(selectedGuide);
+
+    // 1. Create a thread with metadata (required by latest API)
+    const threadRes = await axios.post('https://api.openai.com/v1/threads', {
+      metadata: {
+        source: 'breathwork_app',
+        guide: selectedGuide,
+        timestamp: new Date().toISOString()
+      }
+    }, { headers: OPENAI_HEADERS });
+    
+    if (!threadRes.data?.id) {
+      throw new Error('Failed to create thread: No thread ID returned');
     }
     
-    // Get guide-specific system prompt
-    const systemPrompt = await guideService.getGuideSystemPrompt(selectedGuide);
-    
-    // Get relevant FAQs to provide as context to Groq
-    const contextFAQs = await FAQ.find({
-      $or: [
-        { question: { $regex: query, $options: 'i' } },
-        { answer: { $regex: query, $options: 'i' } }
-      ]
-    }).limit(10).lean();
+    const threadId = threadRes.data.id;
+    console.log('Thread created:', threadId);
 
-    // get courses showing just title and description
-    const courses = await Course.find().limit(10).lean(); 
-    
-    const context = contextFAQs.map(faq => 
-      `Q: ${faq.question}\nA: ${faq.answer}`
-    ).join('\n\n');
-    const contextCourses = courses.map(course => 
-      `- ${course.title}: ${course.description}`
-    ).join('\n');
-   
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+    // 2. Add user message with proper content structure
+    const messageRes = await axios.post(
+      `https://api.openai.com/v1/threads/${threadId}/messages`,
+      {
+        role: 'user',
+        content: `Context: ${guideContext}\n\nUser Question: ${query}`
       },
-      body: JSON.stringify({
-        model: "llama3-70b-8192",
-        messages: [
-          {
-            role: 'system',
-            content: `${systemPrompt}
+      { headers: OPENAI_HEADERS }
+    );
+    
+    if (!messageRes.data?.id) {
+      throw new Error('Failed to add message: No message ID returned');
+    }
+    
+    console.log('Message added:', messageRes.data.id);
 
-Follow these strict rules:
-- ONLY use the provided context to answer the user.
-- DO NOT invent any information not present in the context.
-- If the user asks about courses, use ONLY the course list provided.
-- If no relevant course is found, say: "I'm sorry, I couldn't find any course matching your request."
+    // 3. Run the assistant
+    const runRes = await axios.post(
+      `https://api.openai.com/v1/threads/${threadId}/runs`,
+      { 
+        assistant_id: ASSISTANT_ID,
+        instructions: `INSTRUCTIONS:
+- Use the relevant sources to provide accurate answers
+- Keep responses SHORT and CONCISE (max 2-3 sentences)
+- NO markdown formatting (no **, ##, -, /, etc.)
+- NO emojis or special characters
+- Be direct and helpful
+- If sources don't fully answer the question, say so briefly
+- Reference specific courses when relevant`
+      },
+      { headers: OPENAI_HEADERS }
+    );
+    
+    if (!runRes.data?.id) {
+      throw new Error('Failed to create run: No run ID returned');
+    }
+    
+    const runId = runRes.data.id;
+    console.log('Run created:', runId);
 
-Here is the GENERAL CONTEXT:
-${context}
+    // 4. Poll until completion with timeout
+    let runStatus = 'queued';
+    let attempts = 0;
+    const maxAttempts = 60; // 60 seconds timeout
+    
+    while (['queued', 'in_progress'].includes(runStatus) && attempts < maxAttempts) {
+      await sleep(1000);
+      attempts++;
+      
+      try {
+        const statusRes = await axios.get(
+          `https://api.openai.com/v1/threads/${threadId}/runs/${runId}`,
+          { headers: OPENAI_HEADERS }
+        );
+        
+        runStatus = statusRes.data.status;
+        console.log(`Run status (attempt ${attempts}):`, runStatus);
+        
+        if (runStatus === 'failed') {
+          const errorDetails = statusRes.data.last_error;
+          throw new Error(`Assistant run failed: ${errorDetails?.message || 'Unknown error'}`);
+        }
+        
+        if (runStatus === 'expired') {
+          throw new Error('Assistant run expired');
+        }
+        
+        if (runStatus === 'cancelled') {
+          throw new Error('Assistant run was cancelled');
+        }
+        
+        // Add small delay to avoid rate limiting
+        if (runStatus === 'in_progress') {
+          await sleep(500);
+        }
+        
+        // If completed, add small delay to ensure message is fully processed
+        if (runStatus === 'completed') {
+          await sleep(500);
+          break;
+        }
+        
+      } catch (error) {
+        if (error.response?.status === 429) {
+          // Rate limited - wait longer
+          console.log('Rate limited, waiting 2 seconds...');
+          await sleep(2000);
+          continue;
+        }
+        throw error;
+      }
+    }
+    
+    if (attempts >= maxAttempts) {
+      throw new Error('Assistant run timed out');
+    }
 
-Here is the LIST OF COURSES:
-${contextCourses}
-`
-          },
-          {
-            role: "user",
-            content: query
-          }
-        ],
-        max_tokens: 150,
-        temperature: 0.1
-      })
+    // 5. Get messages with proper error handling
+    const messagesRes = await axios.get(
+      `https://api.openai.com/v1/threads/${threadId}/messages`,
+      { headers: OPENAI_HEADERS }
+    );
+
+    if (!messagesRes.data?.data || !Array.isArray(messagesRes.data.data)) {
+      throw new Error('Invalid messages response structure');
+    }
+
+    const assistantMessage = messagesRes.data.data.find(msg => msg.role === 'assistant');
+    
+    if (!assistantMessage) {
+      throw new Error('No assistant message found in response');
+    }
+
+    const content = assistantMessage.content?.[0]?.text?.value;
+    
+    if (!content) {
+      throw new Error('Assistant message has no text content');
+    }
+
+    console.log('Assistant response received successfully');
+    return cleanResponse(content);
+
+  } catch (error) {
+    console.error('Error getting OpenAI Assistant response:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Groq API error:', errorData);
-      return "I apologize, but I'm having trouble processing your question right now. Please try again later.";
+    // Provide more specific error messages
+    if (error.response?.status === 400) {
+      return "I apologize, but there was an issue with the request format. Please try rephrasing your question.";
+    } else if (error.response?.status === 401) {
+      return "I apologize, but there's an authentication issue. Please contact support.";
+    } else if (error.response?.status === 429) {
+      return "I apologize, but the service is currently busy. Please try again in a moment.";
+    } else if (error.response?.status >= 500) {
+      return "I apologize, but the service is experiencing technical difficulties. Please try again later.";
     }
-
-    const data = await response.json();
-    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-      return data.choices[0].message.content.trim();
-    } else {
-      console.error('Groq API response format error or empty content:', data);
-      return "I apologize, but I received an unexpected response. Please try again.";
-    }
-  } catch (error) {
-    console.error('Error getting Groq response:', error);
-    return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try asking your question in a different way or try again later.";
+    
+    return "I apologize, but I'm having trouble connecting to my knowledge base right now. Please try again later.";
   }
 }
 
-// New function to log unanswered questions for future FAQ creation
+// Log unanswered questions
 async function logUnansweredQuestion(question, userId = null) {
   try {
-    // In a real implementation, you might save this to an UnansweredQuestions collection
     console.log(`Unanswered question logged: "${question}" from user ${userId || 'anonymous'}`);
-    // Could also send notification to admin about potential FAQ gap
   } catch (error) {
-    console.error('Error logging unanswered question:', error);
+    console.error('Error logging unanswered question:', error.message || error);
   }
-}
-
-// Function to check if the response is pending
-function isResponsePending(response) {
-  return response === null;
 }
 
 module.exports = {
   handleUserQuestion,
-  getGroqResponse,
-  logUnansweredQuestion,
-  isResponsePending,
-  searchKnowledgeBase
+  getOpenAIResponse,
+  logUnansweredQuestion
 };
