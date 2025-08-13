@@ -17,6 +17,7 @@ module.exports = {
         webhookSecret: process.env.WEB_HOOK_KEY
     },
     GROQ_API_KEY: process.env.GROQ_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     SMTP: {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: process.env.SMTP_PORT || 587,
