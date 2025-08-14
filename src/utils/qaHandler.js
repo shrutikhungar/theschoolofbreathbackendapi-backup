@@ -118,9 +118,12 @@ async function getOpenAIResponse(query, selectedGuide = 'abhi') {
 - Keep responses SHORT and CONCISE (max 2-3 sentences)
 - NO markdown formatting (no **, ##, -, /, etc.)
 - NO emojis or special characters
+- NO file references, PDF names, or source citations (remove 【】, [], (), etc.)
 - Be direct and helpful
 - If sources don't fully answer the question, say so briefly
-- Reference specific courses when relevant`
+- Reference specific courses when relevant
+- Clean responses of any technical artifacts or file markers
+- Do not include any source file names, timestamps, or technical references in your response`
       },
       { headers: OPENAI_HEADERS }
     );
