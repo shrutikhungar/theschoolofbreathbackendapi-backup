@@ -5,11 +5,15 @@ const {
   recordCustomSession,
   getCustomStatistics,
   updateCustomTiming,
-  resetCustomProgress
+  resetCustomProgress,
+  getTodayCycles
 } = require('../controllers/customBreathingProgress.controller');
 
 // Get custom breathing progress
 router.get('/user/:userId/progress', getCustomBreathingProgress);
+
+// Get today's cycles based on phone's local date
+router.get('/user/:userId/today-cycles', getTodayCycles);
 
 // Get custom breathing statistics
 router.get('/user/:userId/statistics', getCustomStatistics);

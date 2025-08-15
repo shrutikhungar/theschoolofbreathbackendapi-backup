@@ -133,7 +133,15 @@ const customBreathingProgressSchema = new mongoose.Schema({
       hold: Number,
       exhale: Number
     },
-    notes: String
+    notes: String,
+    phoneLocalDate: {
+      type: String, // Store phone's local date as YYYY-MM-DD format
+      required: false
+    },
+    sessionDate: {
+      type: Date, // Store the parsed session date for easier querying
+      required: false
+    }
   }],
   
   // Cycle-by-cycle tracking for current session
@@ -171,6 +179,8 @@ const customBreathingProgressSchema = new mongoose.Schema({
 customBreathingProgressSchema.index({ userId: 1 });
 customBreathingProgressSchema.index({ 'statistics.lastSessionDate': -1 });
 customBreathingProgressSchema.index({ 'statistics.currentStreak': -1 });
+customBreathingProgressSchema.index({ 'recentSessions.phoneLocalDate': 1 });
+customBreathingProgressSchema.index({ 'recentSessions.sessionDate': 1 });
 
 // Virtual for completion percentage of current session
 customBreathingProgressSchema.virtual('currentSessionProgress').get(function() {
@@ -235,7 +245,7 @@ customBreathingProgressSchema.methods.completeCycle = function(cycleTiming) {
 };
 
 // Method to end the current session
-customBreathingProgressSchema.methods.endSession = function() {
+customBreathingProgressSchema.methods.endSession = function(phoneLocalDate = null) {
   if (!this.currentSession.isActive) {
     throw new Error('No active session to end');
   }
@@ -244,6 +254,17 @@ customBreathingProgressSchema.methods.endSession = function() {
   const startTime = this.currentSession.startTime;
   const totalPracticeTime = Math.round((endTime - startTime) / 1000);
   const completedCycles = this.currentSession.completedCycles;
+  
+  // Parse phone's local date if provided
+  let sessionDate = endTime; // Default to server time
+  if (phoneLocalDate) {
+    try {
+      sessionDate = new Date(phoneLocalDate + 'T00:00:00');
+    } catch (error) {
+      console.warn('Invalid phoneLocalDate format, using server time:', phoneLocalDate);
+      sessionDate = endTime;
+    }
+  }
   
   // Create session record
   const sessionRecord = {
@@ -254,7 +275,9 @@ customBreathingProgressSchema.methods.endSession = function() {
     completedCycles,
     practiceTime: totalPracticeTime,
     timing: this.currentSession.timing,
-    notes: `Completed ${completedCycles} cycles in custom mode`
+    notes: `Completed ${completedCycles} cycles in custom mode`,
+    phoneLocalDate: phoneLocalDate,
+    sessionDate: sessionDate
   };
   
   // Add to recent sessions (keep only last 20)
