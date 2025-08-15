@@ -12,5 +12,7 @@ mongoose.connect(process.env.MONGO_URI_DEV, {
    
 })
 
+
+
 .then(db => console.info('Database is connected'))
 .catch(err => console.error(err))
